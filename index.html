@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>VCP Risk & Position Calculator</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    /* CRITICAL MOBILE SCROLL & ZOOM FIXES */
+    * { 
+      touch-action: manipulation; 
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Webkit custom scrollbars */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+
+    /* iOS Pure Themes CSS Overrides */
+    body.theme-dark {
+      background-color: #000000;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+    body.theme-light {
+      background-color: #f2f2f7;
+      color: #000000;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+
+    /* Range slider custom UI overrides */
+    input[type="range"] { -webkit-appearance: none; appearance: none; background: transparent; }
+    input[type="range"]:focus { outline: none; }
+    input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; border-radius: 4px; }
+    input[type="range"]::-webkit-slider-thumb {
+      height: 20px; width: 20px; border-radius: 50%; cursor: pointer; -webkit-appearance: none; margin-top: -6px; box-shadow: 0px 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    /* Dynamic accent-based slider tracks */
+    .slider-blue::-webkit-slider-runnable-track { background: #3a3a3c; }
+    .slider-blue::-webkit-slider-thumb { background: #0a84ff; }
+    .slider-blue-light::-webkit-slider-runnable-track { background: #e5e5ea; }
+    .slider-blue-light::-webkit-slider-thumb { background: #007aff; }
+
+    /* iOS Safe Area Padding helpers for bottom bars and notches */
+    .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 5.5rem); }
+    .nav-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+    /* Loader Spin Animation */
+    .loader-spin { animation: spinner 1s linear infinite; }
+    @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+
+  <!-- Plain JavaScript Definition for instant parsing to avoid ReferenceErrors -->
+  <script>
+    function vcpCalculator() {
+      return {
+        // App Core State
+        lang: 'en', // 'en' or 'tc'
+        theme: 'light', // Default to Light mode
+        activeTab: 'calc',
+        fontSizeLevel: 2, // 5 levels: 0 to 4. Default is 2 (middle)
+
+        // Translations Lookup
+        translations: {
+          en: {
+            title: "VCP Guardian", subtitle: "Risk & Progressive Exposure", one_r: "1R",
+            setup_req: "Setup Required: Go to the Portfolio tab to input your account balance to calibrate the 1R scale.",
+            trade_params: "Trade Parameters", stock_code: "Stock Code", stock_code_placeholder: "e.g., AAPL, 0700.HK, BTC-USD",
+            fetching: "Fetching...", entry_price: "Stock / Asset Entry Price ($)", sl_mechanism: "Stop Loss Mechanism",
+            sl_price: "Price ($)", sl_percent: "Percent %", set_stop_price: "Set Stop Price", sl_placeholder: "e.g. 5 for 5%",
+            target_max_risk: "Target Max Risk (R)", sl_violation: "Stop Loss Violation",
+            sl_violation_msg: "Your current stop loss is {val}. The maximum limit is 10%. Check support pivot again.",
+            high_drawdown: "High Drawdown Risk", high_drawdown_msg: "Stop is {val}. VCP pivots should ideally be tighter (3% to 8%).",
+            blueprint: "Position Size Blueprint", total_cost: "Total Position Cost", total_shares: "Total Target Shares",
+            pct_of_portfolio: "of Portfolio", at_stop: "At Stop", calc_stop_loss: "Calculated Stop Loss",
+            drawdown_fill: "Percent Drawdown on Fill", risk_dollars: "Risk in Dollar Terms ($)", scale_in: "Progressive Scale-In",
+            only_average_up: "Only Average Up", phase1: "Phase 1: Breakout Bet", phase1_sub: "Trigger at cheat/pivot breakout",
+            buy_shares: "Buy Shares", req_capital: "Required Capital", phase2: "Phase 2: Confirmation Bet", phase2_sub: "Remaining {val}R",
+            phase2_desc: "Add verification size only when trade is in profit and establishing higher baseline support.",
+            conf_cost: "Confirmation Cost", add_active: "Add to Active Risk Exposure", account_params: "Account Parameters",
+            total_account_val: "Total Account Value ($)", account_val_sub: "This forms the baseline for the scale calibration where 1R = 1%.",
+            recent_perf: "Your Recent Performance / Trend", poor: "Poor (Tighten Risk)", normal: "Normal", hot: "Hot (Standard Risk)",
+            exposure_thermometer: "Risk Exposure Thermometer", total_live_exposure: "Total Live Exposure Risk",
+            open_positions: "Current Open Positions", optimal: "(Optimal: 4-10)", aim_for: "(Aim for 4-10)",
+            active_ledger: "Active Risk Ledger", clear_all: "Clear All",
+            no_active: "No active positions tracked. Calculate and add trades here to monitor portfolio exposure.",
+            position: "Position", cost: "Cost", sl: "SL", strategy_rules: "Course Risk Rules Cheat Sheet",
+            rule1_title: "The 1% Rule", rule1_desc: "1R constitutes exactly 1% of your total liquid account equity. Keep this constant.",
+            rule2_title: "Max Portfolio Drawdown", rule2_desc: "If the portfolio suffers a cumulative drawdown of 20R, cease all trading.",
+            rule3_title: "Max Portfolio Risk Exposure", rule3_desc: "Never risk more than 10R in total open risk at any single moment.",
+            rule4_title: "Max Position Risk Limit", rule4_desc: "No single equity position should ever risk more than 2R (2% of portfolio).",
+            rule5_title: "Stop Loss Tightness", rule5_desc: "Place stops right below short-term supportive cheat areas (ideally 3-8%).",
+            rule6_title: "Progressive Exposure Blueprint", rule6_desc: "Initiate breakout position with 0.3R to 0.5R. Never average down.",
+            calculator: "Calculator", portfolio: "Portfolio", rules: "Strategy Rules", done: "Done!",
+            toast_valid: "Enter valid entry & stop points first!", toast_violate: "Position risk violates max limit of 2R!",
+            toast_added: "Trade exposure added to active risk!", toast_removed: "Position removed from active risk ledger.",
+            toast_cleared: "Ledger completely cleared.", target_profit: "Target Profit Estimate", rr_ratio: "Risk-to-Reward Ratio (1:R)",
+            target_profit_price: "Target Profit Price", est_profit: "Estimated Profit ($)", pct_gain: "Required Gain (%)",
+            theme_layout: "Theme Settings", dark_theme: "Dark Theme", light_theme: "Light Theme",
+            search_error: "Price lookup failed. Check symbol.", fetched_msg: "Fetched: {name} @ {price}",
+            editing_pos: "Editing Position", save: "Save", cancel: "Cancel", symbol_lbl: "Symbol", current_price: "Current Price ($)",
+            update_ledger_prices: "Update Prices", updating_prices: "Updating Prices...", pnl_updated: "Ledger prices updated!",
+            chart_header: "Snapshot Visualizer", tf_daily: "1D", tf_weekly: "1W", tf_hourly: "1H", tf_5min: "5M"
+          },
+          tc: {
+            title: "VCP 守護者", subtitle: "風險與漸進式曝險", one_r: "1R",
+            setup_req: "需要設定：請前往「投資組合」輸入帳戶餘額以校準 1R 比例。", trade_params: "交易參數",
+            stock_code: "股票代碼", stock_code_placeholder: "例如 AAPL, 0700.HK, BTC-USD", fetching: "獲取中...",
+            entry_price: "股票買入價 ($)", sl_mechanism: "止損機制", sl_price: "價格 ($)", sl_percent: "百分比 %",
+            set_stop_price: "設定止損價", sl_placeholder: "例如：5 代表 5%", target_max_risk: "目標最大風險 (R)",
+            sl_violation: "違反止損規則", sl_violation_msg: "當前止損為 {val}。最大限制為 10%。",
+            high_drawdown: "高回撤風險", high_drawdown_msg: "止損為 {val}。VCP 整合區理想上應為 (3% 至 8%)。",
+            blueprint: "部位大小藍圖", total_cost: "總部位成本", total_shares: "總目標股數", pct_of_portfolio: "帳戶佔比",
+            at_stop: "觸及止損時", calc_stop_loss: "計算後的止損價", drawdown_fill: "成交時的止損幅度", risk_dollars: "風險金額 ($)",
+            scale_in: "漸進式加碼策略", only_average_up: "僅限向上加碼", phase1: "階段 1：突破買入", phase1_sub: "在突破時觸發",
+            buy_shares: "購買股數", req_capital: "所需資金", phase2: "階段 2：確認加碼", phase2_sub: "剩餘 {val}R",
+            phase2_desc: "僅在交易處於獲利狀態且建立更高支撐時才加入確認部位。", conf_cost: "確認部位成本",
+            add_active: "添加到活期風險曝光", account_params: "帳戶參數", total_account_val: "帳戶總價值 ($)",
+            account_val_sub: "此數值為校準 1R 比例的基準 (1R = 1%)。", recent_perf: "您最近的交易表現", poor: "欠佳", normal: "正常",
+            hot: "火熱", exposure_thermometer: "風險曝險溫度計", total_live_exposure: "總活期曝險風險", open_positions: "目前持倉數量",
+            optimal: "(最優: 4-10)", aim_for: "(目標 4-10)", active_ledger: "活期風險帳本", clear_all: "全部清除",
+            no_active: "未追蹤任何部位。請在此計算並添加交易。", position: "部位", cost: "成本", sl: "止損", strategy_rules: "風險規則速查表",
+            rule1_title: "1% 風險原則", rule1_desc: "1R 代表您總帳戶淨值的 1%。隨著淨值增長，請保持此比例。",
+            rule2_title: "最大帳戶回撤", rule2_desc: "如果投資組合累計回撤達到 20R，應立即停止交易。",
+            rule3_title: "最大帳戶曝險", rule3_desc: "任何時候總活期風險不得超過 10R。",
+            rule4_title: "單一持倉最大風險", rule4_desc: "單一股票持倉風險絕不能超過 2R (帳戶的 2%)。",
+            rule5_title: "止損緊湊度", rule5_desc: "將止損設於短期支撐區域下方，硬性最大止損為 -10%。",
+            rule6_title: "漸進式加碼藍圖", rule6_desc: "首筆突破部位使用 0.3R 至 0.5R。絕不向下攤平。",
+            calculator: "計算器", portfolio: "投資組合", rules: "策略規則", done: "完成！",
+            toast_valid: "請先輸入有效的買入價和止損！", toast_violate: "持倉風險違反 2R 的最大限制！",
+            toast_added: "交易已添加到活期風險曝光！", toast_removed: "部位已從活期風險帳本中移除。",
+            toast_cleared: "帳本已完全清除。", target_profit: "目標利潤預估", rr_ratio: "風險回報比 (1:R)",
+            target_profit_price: "目標利潤價", est_profit: "預計利潤 ($)", pct_gain: "所需漲幅 (%)",
+            theme_layout: "主題設置", dark_theme: "深色模式", light_theme: "淺色模式",
+            search_error: "無法獲取價格。請嘗試 AAPL, 0700.HK, BTC-USD。", fetched_msg: "成功獲取: {name} @ {price}",
+            editing_pos: "編輯持倉部位", save: "儲存", cancel: "取消", symbol_lbl: "股票代號", current_price: "現價 ($)",
+            update_ledger_prices: "更新現價", updating_prices: "正在更新...", pnl_updated: "帳本現價已更新！",
+            chart_header: "走勢圖快照", tf_daily: "1D", tf_weekly: "1W", tf_hourly: "1H", tf_5min: "5M"
+          }
+        },
+
+        // Helper Translation function
+        t(key) { return this.translations[this.lang]?.[key] || key; },
+
+        // Portfolio values
+        portfolioSize: 100000, 
+        performanceMod: 'normal', 
+
+        // Auto-fetch Stock Parameters
+        stockCode: '',
+        isFetchingPrice: false,
+        priceFetchError: '',
+        fetchDebounceTimer: null,
+        
+        // Calculator Logic
+        entryPrice: null,
+        slMode: 'price', 
+        stopPrice: null,
+        stopPercent: 5, 
+        targetR: 1.0, 
+        scaleInRatio: 0.4, 
+        rewardMultiple: 2.0, 
+        targetProfitPrice: 0,
+        requiredProfitGain: 0,
+        estimatedProfitValue: 0,
+
+        // Calculated Math variables
+        rValue: 1000,
+        calculatedSlPercent: 0,
+        finalStopPrice: 0,
+        totalShares: 0,
+        totalPositionCost: 0,
+        portfolioPercentUsed: '0%',
+
+        // Progressive entries
+        firstBetShares: 0, firstBetCapital: 0,
+        secondBetShares: 0, secondBetCapital: 0,
+
+        // Ledger & Tracking
+        activeTrades: [],
+        totalActiveRisk: 0,
+        editingIndex: null, editSymbol: '', editEntryPrice: null, editStopPrice: null, editCurrentPrice: null, editRiskR: 1.0,
+
+        // UI States
+        toastShow: false, toastMessage: '',
+        chartInterval: 'D', // TradingView snapshot intervals ('W', 'D', '60', '5')
+
+        init() {
+          const savedData = localStorage.getItem('vcp_portfolio_profile_v6');
+          if (savedData) {
+            try {
+              const data = JSON.parse(savedData);
+              this.portfolioSize = data.portfolioSize || 100000;
+              this.performanceMod = data.performanceMod || 'normal';
+              this.activeTrades = data.activeTrades || [];
+              this.theme = data.theme || 'light';
+              this.lang = data.lang || 'en';
+              this.fontSizeLevel = data.fontSizeLevel !== undefined ? data.fontSizeLevel : 2;
+            } catch (e) {}
+          }
+          this.recalculateAll();
+
+          // Font Sizing Watcher
+          this.applyRootFontSize();
+          this.$watch('fontSizeLevel', () => this.applyRootFontSize());
+
+          // Auto-fetching Debounce logic (Triggers fetch without needing a button)
+          this.$watch('stockCode', (newVal) => {
+            clearTimeout(this.fetchDebounceTimer);
+            this.priceFetchError = '';
+            
+            if (newVal && newVal.trim().length >= 2) {
+              this.isFetchingPrice = true;
+              this.fetchDebounceTimer = setTimeout(() => {
+                this.fetchStockPrice();
+              }, 800); // Wait 800ms after user stops typing
+            } else {
+              this.isFetchingPrice = false;
+            }
+          });
+        },
+
+        // Helper computed style: Binds font-size dynamically ONLY to input elements
+        get inputStyle() {
+          const sizeMap = ['12px', '14px', '16px', '18.5px', '22px'];
+          return `font-size: ${sizeMap[this.fontSizeLevel]} !important;`;
+        },
+
+        changeFontSize(step) {
+          // Adjust between boundaries of scale index 0 (smallest) to 4 (largest)
+          this.fontSizeLevel = Math.max(0, Math.min(4, this.fontSizeLevel + step));
+          this.savePortfolio();
+        },
+
+        applyRootFontSize() {
+          // Since tailwind uses rem units for basically everything (text, margin, padding),
+          // changing the root HTML font size globally scales the ENTIRE application cleanly.
+          const sizeMap = ['12px', '14px', '16px', '18px', '20px'];
+          document.documentElement.style.fontSize = sizeMap[this.fontSizeLevel];
+        },
+
+        savePortfolio() {
+          localStorage.setItem('vcp_portfolio_profile_v6', JSON.stringify({
+            portfolioSize: this.portfolioSize, performanceMod: this.performanceMod,
+            activeTrades: this.activeTrades, theme: this.theme, lang: this.lang, fontSizeLevel: this.fontSizeLevel
+          }));
+          this.recalculateAll();
+        },
+
+        recalculateAll() {
+          this.rValue = this.portfolioSize * 0.01;
+          this.calculatePosition();
+          this.calculateActiveRisk();
+        },
+
+        calculatePosition() {
+          if (!this.entryPrice || this.entryPrice <= 0) { this.resetCalculations(); return; }
+
+          const entry = parseFloat(this.entryPrice);
+          const currentRiskDollar = this.rValue * this.targetR;
+
+          if (this.slMode === 'price') {
+            const stop = parseFloat(this.stopPrice);
+            if (stop && stop < entry) {
+              this.finalStopPrice = stop;
+              this.calculatedSlPercent = ((entry - stop) / entry) * 100;
+            } else { this.finalStopPrice = 0; this.calculatedSlPercent = 0; }
+          } else {
+            const pct = parseFloat(this.stopPercent);
+            if (pct && pct > 0) {
+              this.calculatedSlPercent = pct;
+              this.finalStopPrice = entry * (1 - (pct / 100));
+            } else { this.finalStopPrice = 0; this.calculatedSlPercent = 0; }
+          }
+
+          if (this.calculatedSlPercent > 0) {
+            const riskPerShare = entry - this.finalStopPrice;
+            this.totalShares = Math.floor(currentRiskDollar / riskPerShare);
+            this.totalPositionCost = this.totalShares * entry;
+            this.portfolioPercentUsed = ((this.totalPositionCost / this.portfolioSize) * 100).toFixed(1) + '%';
+
+            const firstR = this.scaleInRatio;
+            this.firstBetShares = Math.floor((this.rValue * firstR) / riskPerShare);
+            this.firstBetCapital = this.firstBetShares * entry;
+
+            const secondR = this.targetR - firstR;
+            this.secondBetShares = Math.floor((this.rValue * secondR) / riskPerShare);
+            this.secondBetCapital = this.secondBetShares * entry;
+
+            this.targetProfitPrice = entry + (this.rewardMultiple * riskPerShare);
+            this.requiredProfitGain = ((this.targetProfitPrice - entry) / entry) * 100;
+            this.estimatedProfitValue = this.totalShares * (this.targetProfitPrice - entry);
+          } else {
+            this.resetCalculations();
+          }
+        },
+
+        resetCalculations() {
+          this.totalShares = 0; this.totalPositionCost = 0; this.portfolioPercentUsed = '0%';
+          this.firstBetShares = 0; this.firstBetCapital = 0; this.secondBetShares = 0; this.secondBetCapital = 0;
+          this.targetProfitPrice = 0; this.requiredProfitGain = 0; this.estimatedProfitValue = 0;
+        },
+
+        // Format Ticker for TradingView Widget
+        getTVTicker(code) {
+          if (!code) return '';
+          let s = code.trim().toUpperCase();
+          if (s.endsWith('.HK')) return `HKEX:${parseInt(s.replace('.HK', ''), 10)}`;
+          if (s === 'BTC' || s === 'BTC-USD') return 'BINANCE:BTCUSDT';
+          if (s === 'ETH' || s === 'ETH-USD') return 'BINANCE:ETHUSDT';
+          return s;
+        },
+
+        // Format Ticker specifically for Yahoo Finance logic
+        cleanTicker(symbolString) {
+          let s = symbolString.trim().toUpperCase();
+          if (!s) return '';
+          const cryptos = ['BTC', 'ETH', 'SOL', 'ADA', 'XRP', 'DOT', 'DOGE', 'BNB'];
+          if (cryptos.includes(s)) return `${s}-USD`;
+          return s;
+        },
+
+        // Auto-fetching logic via allorigins proxy to Yahoo Finance
+        async fetchStockPrice() {
+          if (!this.stockCode || this.stockCode.trim() === '') {
+            this.isFetchingPrice = false; return;
+          }
+          const ticker = this.cleanTicker(this.stockCode);
+
+          try {
+            const rawUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`;
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(rawUrl)}`;
+            
+            const response = await fetch(proxyUrl);
+            const wrapped = await response.json();
+            const yahooJson = JSON.parse(wrapped.contents);
+            
+            const price = yahooJson.chart.result[0].meta.regularMarketPrice;
+            const currency = yahooJson.chart.result[0].meta.currency || '';
+            const name = yahooJson.chart.result[0].meta.symbol || ticker;
+
+            if (price && price > 0) {
+              this.entryPrice = price; // Core assignment automatically mapped to UI
+              
+              if (this.slMode === 'percent') {
+                this.calculatePosition();
+              } else {
+                this.stopPrice = (price * 0.95); // Default 5% stop estimation
+                this.calculatePosition();
+              }
+              
+              this.triggerToast(this.t('fetched_msg').replace('{name}', name).replace('{price}', price.toFixed(2) + ' ' + currency));
+            }
+          } catch (e) {
+            console.warn("Pricing lookup error: ", e);
+            this.priceFetchError = this.t('search_error');
+          } finally {
+            this.isFetchingPrice = false;
+          }
+        },
+
+        async updateAllLedgerPrices() {
+          if (this.activeTrades.length === 0) return;
+          this.triggerToast(this.t('updating_prices'));
+          for (let i = 0; i < this.activeTrades.length; i++) {
+            const trade = this.activeTrades[i];
+            if (trade.symbol && trade.symbol !== 'ASSET') {
+              try {
+                const ticker = this.cleanTicker(trade.symbol);
+                const dataResult = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`)}`).then(r => r.json());
+                const price = JSON.parse(dataResult.contents).chart.result[0].meta.regularMarketPrice;
+                if (price && price > 0) this.activeTrades[i].currentPrice = price;
+              } catch (e) {}
+            }
+          }
+          this.savePortfolio();
+          this.triggerToast(this.t('pnl_updated'));
+        },
+
+        // Portfolio Dashboard Math Helpers
+        calculateTotalAssetValue() {
+          return this.activeTrades.reduce((total, trade) => {
+            const currentPrice = trade.currentPrice !== undefined ? trade.currentPrice : trade.entryPrice;
+            return total + (trade.sharesCount * currentPrice);
+          }, 0);
+        },
+        calculateRemainingCash() {
+          const totalCostInMarket = this.activeTrades.reduce((total, trade) => total + trade.cost, 0);
+          return Math.max(0, this.portfolioSize - totalCostInMarket);
+        },
+
+        addToActiveTrades() {
+          if (!this.entryPrice || this.totalShares <= 0) { this.triggerToast(this.t('toast_valid')); return; }
+          if (this.targetR > 2.0) { this.triggerToast(this.t('toast_violate')); return; }
+
+          this.activeTrades.push({
+            entryPrice: this.entryPrice, stopPrice: this.finalStopPrice, slPercent: this.calculatedSlPercent,
+            riskR: this.targetR, cost: this.totalPositionCost, symbol: this.stockCode ? this.stockCode.toUpperCase().trim() : 'ASSET',
+            currentPrice: this.entryPrice, sharesCount: this.totalShares
+          });
+          this.savePortfolio();
+          this.triggerToast(this.t('toast_added'));
+          this.entryPrice = null; this.stopPrice = null; this.stockCode = ''; this.resetCalculations();
+        },
+
+        removeTrade(index) { this.activeTrades.splice(index, 1); this.savePortfolio(); this.triggerToast(this.t('toast_removed')); },
+        clearAllTrades() { this.activeTrades = []; this.savePortfolio(); this.triggerToast(this.t('toast_cleared')); },
+
+        // Edit Controls
+        startEditTrade(index) {
+          this.editingIndex = index;
+          const t = this.activeTrades[index];
+          this.editSymbol = t.symbol || 'ASSET'; this.editEntryPrice = t.entryPrice; this.editStopPrice = t.stopPrice;
+          this.editCurrentPrice = t.currentPrice !== undefined ? t.currentPrice : t.entryPrice; this.editRiskR = t.riskR;
+        },
+        saveEditTrade() {
+          if (this.editingIndex === null) return;
+          const i = this.editingIndex, entry = parseFloat(this.editEntryPrice), stop = parseFloat(this.editStopPrice), curr = parseFloat(this.editCurrentPrice);
+          if (entry > 0 && stop > 0 && entry > stop) {
+            const riskPerShare = entry - stop, shares = Math.floor((this.rValue * this.editRiskR) / riskPerShare);
+            this.activeTrades[i] = {
+              ...this.activeTrades[i], symbol: this.editSymbol.trim().toUpperCase(), entryPrice: entry, stopPrice: stop,
+              currentPrice: curr, riskR: this.editRiskR, cost: shares * entry, sharesCount: shares, slPercent: ((entry - stop) / entry) * 100
+            };
+            this.triggerToast(this.t('done'));
+          } else { this.triggerToast(this.t('toast_valid')); }
+          this.editingIndex = null; this.savePortfolio();
+        },
+        cancelEdit() { this.editingIndex = null; },
+
+        calculateActiveRisk() {
+          this.totalActiveRisk = this.activeTrades.reduce((sum, trade) => {
+            const curr = trade.currentPrice !== undefined ? trade.currentPrice : trade.entryPrice;
+            const shares = trade.sharesCount || Math.floor((this.rValue * trade.riskR) / (trade.entryPrice - trade.stopPrice));
+            if (curr <= trade.stopPrice) return sum + 0; 
+            const currentRiskR = (shares * (curr - trade.stopPrice)) / this.rValue;
+            return sum + Math.min(currentRiskR, trade.riskR);
+          }, 0);
+        },
+
+        getMaxExposureR() {
+          if (this.performanceMod === 'poor') return 5.0; 
+          if (this.performanceMod === 'normal') return 8.0; 
+          return 10.0; 
+        },
+
+        getExposureStatusMessage() {
+          const max = this.getMaxExposureR();
+          if (this.totalActiveRisk > max) return this.lang === 'en' ? `🚨 EXPOSURE CRITICAL! Remaining risk is ${this.totalActiveRisk.toFixed(1)}R, exceeding threshold of ${max}R.` : `🚨 曝險危急！剩餘風險為 ${this.totalActiveRisk.toFixed(1)}R，已超出閾值 ${max}R。`;
+          if (this.totalActiveRisk >= max - 2) return this.lang === 'en' ? `⚠️ Warning: Remaining risk is ${this.totalActiveRisk.toFixed(1)}R, approaching limit of ${max}R.` : `⚠️ 警告：剩餘風險為 ${this.totalActiveRisk.toFixed(1)}R，逼近曝險限制 ${max}R。`;
+          return this.lang === 'en' ? `✅ Dynamic portfolio risk is in healthy alignment.` : `✅ 動態剩餘風險安全。`;
+        },
+
+        formatCurrency(value) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value); },
+        triggerToast(message) {
+          this.toastMessage = message; this.toastShow = true;
+          setTimeout(() => { this.toastShow = false; }, 3000);
+        },
+        calculateTickStyle(val, min, max) {
+          const pct = ((val - min) / (max - min)) * 100;
+          return `left: calc(${pct}% + ${(0.5 - pct/100) * 20}px); transform: translateX(-50%);`;
+        },
+
+        // Dynamic visual UI mappings
+        get containerBgClass() { return this.theme === 'dark' ? 'bg-black text-white' : 'bg-[#f2f2f7] text-black'; },
+        get cardClass() { return this.theme === 'dark' ? 'bg-[#1c1c1e] rounded-[24px] p-4 shadow-none' : 'bg-white rounded-[24px] p-4 shadow-none'; },
+        get inputClass() { return this.theme === 'dark' ? 'bg-[#2c2c2e] text-white rounded-[14px] px-4 py-2.5 border-0 transition-all focus:ring-2 focus:ring-[#0a84ff]' : 'bg-[#e5e5ea] text-black rounded-[14px] px-4 py-2.5 border-0 transition-all focus:ring-2 focus:ring-[#007aff]'; },
+        get badgeClass() { return this.theme === 'dark' ? 'bg-[#0a84ff]/20 text-[#0a84ff]' : 'bg-[#007aff]/15 text-[#007aff]'; },
+        get accentTextClass() { return this.theme === 'dark' ? 'text-[#0a84ff]' : 'text-[#007aff]'; },
+        get accentBtnClass() { return this.theme === 'dark' ? 'bg-[#0a84ff] text-white' : 'bg-[#007aff] text-white'; },
+        get secondaryBtnClass() { return this.theme === 'dark' ? 'bg-[#2c2c2e] text-[#0a84ff]' : 'bg-[#e5e5ea] text-[#007aff]'; },
+        get sliderClass() { return this.theme === 'dark' ? 'slider-blue' : 'slider-blue-light'; }
+      };
+    }
+  </script>
+
+  <!-- Safely Load Alpine.js defer after global component registry -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="antialiased flex flex-col min-h-screen transition-colors duration-300 pb-safe" :class="'theme-' + theme + ' ' + containerBgClass" x-data="vcpCalculator()">
+
+  <!-- Top Navigation Header -->
+  <header class="border-b sticky top-0 z-50 px-4 py-3 flex items-center justify-between" 
+    :class="theme === 'dark' ? 'bg-black/90 border-[#1c1c1e]' : 'bg-[#f2f2f7]/95 border-[#e5e5ea]'">
+    <div class="flex items-center space-x-2.5">
+      <div class="p-2 rounded-xl border flex items-center justify-center" :class="badgeClass">
+        <i class="fa-solid fa-chart-line text-lg"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-base leading-none tracking-tight" x-text="t('title')">VCP Guardian</h1>
+        <p class="text-[10px] opacity-60 mt-0.5" x-text="t('subtitle')">Risk & Progressive Exposure</p>
+      </div>
+    </div>
+    
+    <!-- Top Action Items: Font Adjuster, Lang, 1R Value -->
+    <div class="flex items-center space-x-1.5">
+      <!-- 2-Button Input Font Size Scaler (A- and A+) -->
+      <div class="flex items-center rounded-lg p-0.5 border"
+           :class="theme === 'dark' ? 'border-zinc-800 bg-zinc-900' : 'border-zinc-300 bg-white/50'">
+        <button @click="changeFontSize(-1)" 
+                class="px-2.5 py-1 text-[10px] font-bold rounded transition opacity-80 hover:opacity-100 active:scale-95 outline-none"
+                :class="theme === 'dark' ? 'text-white' : 'text-black'">
+          A-
+        </button>
+        <button @click="changeFontSize(1)" 
+                class="px-2.5 py-1 text-[13px] font-bold rounded transition opacity-80 hover:opacity-100 active:scale-95 outline-none"
+                :class="theme === 'dark' ? 'text-white' : 'text-black'">
+          A+
+        </button>
+      </div>
+
+      <!-- Language Switcher Button -->
+      <button @click="lang = (lang === 'en' ? 'tc' : 'en'); savePortfolio()" 
+        class="text-xs font-semibold px-2 py-1.5 rounded-lg border transition-all active:scale-95 outline-none"
+        :class="theme === 'dark' ? 'bg-[#1c1c1e] border-transparent text-white' : 'bg-white border-transparent text-black shadow-sm'">
+        <span x-text="lang === 'en' ? '繁' : 'EN'"></span>
+      </button>
+
+      <span class="text-xs px-2 py-1.5 rounded-lg border font-medium shadow-sm"
+        :class="theme === 'dark' ? 'bg-[#1c1c1e] border-transparent text-[#0a84ff]' : 'bg-white border-transparent text-[#007aff]'">
+        <span x-text="t('one_r')">1R</span> = <strong x-text="formatCurrency(rValue)">$0.00</strong>
+      </span>
+    </div>
+  </header>
+
+  <!-- Main Scrollable Core Grid -->
+  <main class="flex-grow px-4 pt-4 max-w-md mx-auto w-full space-y-4">
+    
+    <!-- TAB 1: INTERACTIVE RISK CALCULATOR -->
+    <div x-show="activeTab === 'calc'" class="space-y-4" x-transition:enter="transition ease-out duration-150">
+      
+      <div x-show="portfolioSize <= 0" class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-amber-900 dark:text-amber-200 text-sm flex items-start space-x-3">
+        <i class="fa-solid fa-triangle-exclamation text-amber-500 text-base mt-0.5"></i>
+        <div x-text="t('setup_req')">Setup Required: Input capital first.</div>
+      </div>
+
+      <!-- Trade Parameters Card -->
+      <div :class="cardClass">
+        <h2 class="text-xs font-bold uppercase tracking-wider mb-4 flex items-center opacity-70">
+          <i class="fa-solid fa-chart-bar mr-2" :class="accentTextClass"></i> <span x-text="t('trade_params')">Trade Parameters</span>
+        </h2>
+        
+        <div class="space-y-4">
+          <!-- Realtime Auto Quote Fetching Input -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-semibold opacity-70" x-text="t('stock_code')">Stock Code</label>
+            </div>
+            
+            <div class="relative">
+              <input type="text" 
+                x-model="stockCode" 
+                autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false"
+                :placeholder="t('stock_code_placeholder')"
+                :class="inputClass"
+                class="w-full pr-10 font-bold tracking-wide outline-none">
+              
+              <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center">
+                <i x-show="!isFetchingPrice" class="fa-solid fa-magnifying-glass text-sm opacity-50"></i>
+                <i x-show="isFetchingPrice" class="fa-solid fa-circle-notch loader-spin" :class="accentTextClass" style="display: none;"></i>
+              </div>
+            </div>
+            
+            <!-- Stock Code Helper -->
+            <div class="mt-2 p-2 rounded-xl text-[10px] space-y-1" :class="theme === 'dark' ? 'bg-[#1c1c1e] border border-zinc-800 text-slate-400' : 'bg-slate-50 border border-slate-200 text-slate-500'">
+              <div class="font-bold flex items-center opacity-85">
+                <i class="fa-solid fa-circle-info mr-1" :class="accentTextClass"></i>
+                <span x-text="lang === 'en' ? 'Format Guidelines:' : '格式指引：'"></span>
+              </div>
+              <div class="grid grid-cols-3 gap-1 text-center font-mono mt-1">
+                <div class="p-1 rounded" :class="theme === 'dark' ? 'bg-black/30' : 'bg-black/5'">
+                  <span class="block text-[8px] opacity-60">US</span><strong :class="accentTextClass">AAPL</strong>
+                </div>
+                <div class="p-1 rounded" :class="theme === 'dark' ? 'bg-black/30' : 'bg-black/5'">
+                  <span class="block text-[8px] opacity-60">HK</span><strong :class="accentTextClass">0700.HK</strong>
+                </div>
+                <div class="p-1 rounded" :class="theme === 'dark' ? 'bg-black/30' : 'bg-black/5'">
+                  <span class="block text-[8px] opacity-60">Crypto</span><strong :class="accentTextClass">BTC-USD</strong>
+                </div>
+              </div>
+            </div>
+            <p x-show="priceFetchError" class="text-[10px] text-rose-500 mt-1.5 font-semibold" x-text="priceFetchError"></p>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 pt-2">
+            <!-- Entry price (Auto updates) -->
+            <div class="transition-all" :class="isFetchingPrice ? 'opacity-50 pointer-events-none' : 'opacity-100'">
+              <label class="block text-xs font-semibold opacity-70 mb-1" x-text="t('entry_price')">Stock / Asset Entry Price ($)</label>
+              <div class="relative">
+                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-mono font-medium">$</span>
+                <input type="number" step="any" inputmode="decimal" pattern="[0-9.]*" x-model.number="entryPrice" @input="calculatePosition()"
+                  class="w-full pl-8 outline-none animate-all duration-300" :class="inputClass" :style="inputStyle" placeholder="0.00">
+              </div>
+            </div>
+
+            <!-- Stop Loss System -->
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-semibold opacity-70" x-text="t('sl_mechanism')">Stop Loss Mechanism</label>
+                <div class="flex space-x-2">
+                  <button @click="slMode = 'price'; calculatePosition()" :class="slMode === 'price' ? badgeClass : 'text-slate-500'" 
+                    class="text-[10px] uppercase font-bold px-2 py-0.5 rounded transition outline-none" x-text="t('sl_price')">Price</button>
+                  <button @click="slMode = 'percent'; calculatePosition()" :class="slMode === 'percent' ? badgeClass : 'text-slate-500'" 
+                    class="text-[10px] uppercase font-bold px-2 py-0.5 rounded transition outline-none" x-text="t('sl_percent')">Percent %</button>
+                </div>
+              </div>
+              <template x-if="slMode === 'price'">
+                <div class="relative">
+                  <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-mono font-medium">$</span>
+                  <input type="number" step="any" inputmode="decimal" pattern="[0-9.]*" x-model.number="stopPrice" @input="calculatePosition()"
+                    class="w-full pl-8 outline-none" :class="inputClass" :style="inputStyle" :placeholder="t('set_stop_price')">
+                </div>
+              </template>
+              <template x-if="slMode === 'percent'">
+                <div class="relative">
+                  <input type="number" step="any" inputmode="decimal" pattern="[0-9.]*" x-model.number="stopPercent" @input="calculatePosition()"
+                    class="w-full pr-8 outline-none" :class="inputClass" :style="inputStyle" :placeholder="t('sl_placeholder')">
+                  <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500">%</span>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Target Max Risk Slider -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-semibold opacity-70" x-text="t('target_max_risk')">Target Max Risk (R)</label>
+              <span class="text-sm font-bold" :class="accentTextClass" x-text="targetR.toFixed(1) + ' R'">1.0 R</span>
+            </div>
+            <div class="w-full mt-2 relative">
+              <input type="range" min="0.1" max="2.0" step="0.1" x-model.number="targetR" @input="calculatePosition()"
+                :class="sliderClass" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+              <!-- Slider Ticks -->
+              <div class="relative w-full h-8 mt-2 text-[9px] text-slate-400 font-mono">
+                <div class="absolute flex flex-col items-center" :style="calculateTickStyle(0.1, 0.1, 2.0)"><span class="w-[1.5px] h-1.5 bg-current opacity-40 mb-1"></span><span>0.1R</span></div>
+                <div class="absolute flex flex-col items-center" :style="calculateTickStyle(0.5, 0.1, 2.0)"><span class="w-[1.5px] h-1.5 bg-current opacity-40 mb-1"></span><span>0.5R</span></div>
+                <div class="absolute flex flex-col items-center" :style="calculateTickStyle(1.0, 0.1, 2.0)"><span class="w-[1.5px] h-1.5 bg-current opacity-40 mb-1"></span><span>1.0R</span></div>
+                <div class="absolute flex flex-col items-center" :style="calculateTickStyle(1.5, 0.1, 2.0)"><span class="w-[1.5px] h-1.5 bg-current opacity-40 mb-1"></span><span>1.5R</span></div>
+                <div class="absolute flex flex-col items-center" :style="calculateTickStyle(2.0, 0.1, 2.0)"><span class="w-[1.5px] h-1.5 bg-current opacity-40 mb-1"></span><span>2.0R</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Alerts -->
+      <div class="space-y-2">
+        <template x-if="calculatedSlPercent > 10">
+          <div class="p-3.5 rounded-xl text-xs flex items-center space-x-2.5 border shadow-sm" :class="theme === 'light' ? 'bg-rose-100 border-rose-400 text-rose-950 font-bold' : 'bg-rose-500/10 border-rose-500/20 text-rose-200'">
+            <i class="fa-solid fa-ban text-rose-600 text-sm"></i>
+            <div><strong x-text="t('sl_violation')"></strong> <span x-text="t('sl_violation_msg').replace('{val}', calculatedSlPercent.toFixed(1) + '%')"></span></div>
+          </div>
+        </template>
+        <template x-if="calculatedSlPercent <= 10 && calculatedSlPercent > 8">
+          <div class="p-3.5 rounded-xl text-xs flex items-center space-x-2.5 border shadow-sm" :class="theme === 'light' ? 'bg-amber-100 border-amber-400 text-amber-950 font-bold' : 'bg-amber-500/10 border border-amber-500/20 text-amber-300'">
+            <i class="fa-solid fa-triangle-exclamation text-amber-600 text-sm"></i>
+            <div><strong x-text="t('high_drawdown')"></strong> <span x-text="t('high_drawdown_msg').replace('{val}', calculatedSlPercent.toFixed(1) + '%')"></span></div>
+          </div>
+        </template>
+      </div>
+
+      <!-- TradingView Snapshot Tabs (Non-Interactive Embed) -->
+      <div :class="cardClass" x-show="stockCode && entryPrice">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-xs font-semibold uppercase tracking-wider opacity-70 flex items-center">
+            <i class="fa-solid fa-chart-area mr-2" :class="accentTextClass"></i> <span x-text="t('chart_header')">Snapshot</span>
+          </h2>
+          <!-- Timeframe Selector Tabs -->
+          <div class="flex rounded-lg p-0.5 border" :class="theme === 'dark' ? 'border-zinc-800 bg-zinc-900' : 'border-zinc-300 bg-zinc-200/50'">
+            <button @click="chartInterval = 'W'" :class="chartInterval === 'W' ? accentBtnClass : 'opacity-60'" class="text-[9px] font-bold px-2 py-1 rounded transition outline-none" x-text="t('tf_weekly')">1W</button>
+            <button @click="chartInterval = 'D'" :class="chartInterval === 'D' ? accentBtnClass : 'opacity-60'" class="text-[9px] font-bold px-2 py-1 rounded transition outline-none" x-text="t('tf_daily')">1D</button>
+            <button @click="chartInterval = '60'" :class="chartInterval === '60' ? accentBtnClass : 'opacity-60'" class="text-[9px] font-bold px-2 py-1 rounded transition outline-none" x-text="t('tf_hourly')">1H</button>
+            <button @click="chartInterval = '5'" :class="chartInterval === '5' ? accentBtnClass : 'opacity-60'" class="text-[9px] font-bold px-2 py-1 rounded transition outline-none" x-text="t('tf_5min')">5M</button>
+          </div>
+        </div>
+        
+        <!-- Snapshot Chart Iframe with completely blocked interaction -->
+        <div class="w-full rounded-xl overflow-hidden border bg-black" :class="theme === 'dark' ? 'border-zinc-800' : 'border-zinc-300'" style="height: 260px;">
+          <iframe 
+            :src="`https://s.tradingview.com/widgetembed/?symbol=${getTVTicker(stockCode)}&interval=${chartInterval}&hidesidetoolbar=1&symboledit=0&saveimage=0&toolbarbg=f1f3f6&studies=%5B%5D&theme=${theme === 'dark' ? 'dark' : 'light'}`"
+            class="w-full h-full border-0 pointer-events-none" allowtransparency="true" scrolling="no" loading="lazy">
+          </iframe>
+        </div>
+      </div>
+
+      <!-- Target Profit Sizing -->
+      <div :class="cardClass">
+        <h2 class="text-xs font-semibold uppercase tracking-wider mb-4 opacity-70 flex items-center">
+          <i class="fa-solid fa-trophy mr-2 text-amber-500"></i> <span x-text="t('target_profit')">Target Profit Estimate</span>
+        </h2>
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-semibold opacity-70" x-text="t('rr_ratio')">Risk-to-Reward Ratio (1:R)</label>
+              <span class="text-sm font-bold font-mono text-emerald-500" x-text="'1 : ' + rewardMultiple.toFixed(1)">1 : 2.0</span>
+            </div>
+            <div class="w-full mt-2 relative">
+              <input type="range" min="1.0" max="5.0" step="0.1" x-model.number="rewardMultiple" @input="calculatePosition()"
+                :class="sliderClass" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+              <!-- Slider Ticks -->
+              <div class="relative w-full h-8 mt-2 text-[9px] text-slate-400 font-mono">
+                <div class="absolute flex flex-col items-center" :style="calculateTickStyle(1.0, 1.0, 5.0)"><span class="w-[1.5px] h-1.5 bg-current opacity-40 mb-1"></span><span>1:1</span></div>
+                <div class="absolute flex flex-col items-center" :style="calculateTickStyle(2.0, 1.0, 5.0)"><span class="w-[1.5px] h-1.5 bg-current opacity-40 mb-1"></span><span>1:2</span></div>
+                <div class="absolute flex flex-col items-center" :style="calculateTickStyle(3.0, 1.0, 5.0)"><span class="w-[1.5px] h-1.5 bg-current opacity-40 mb-1"></span><span>1:3</span></div>
+                <div class="absolute flex flex-col items-center" :style="calculateTickStyle(4.0, 1.0, 5.0)"><span class="w-[1.5px] h-1.5 bg-current opacity-40 mb-1"></span><span>1:4</span></div>
+                <div class="absolute flex flex-col items-center" :style="calculateTickStyle(5.0, 1.0, 5.0)"><span class="w-[1.5px] h-1.5 bg-current opacity-40 mb-1"></span><span>1:5</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-2 pt-2 border-t" :class="theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200'">
+            <div class="text-center p-2 rounded-xl border border-transparent" :class="theme === 'dark' ? 'bg-[#1c1c1e] shadow-inner' : 'bg-slate-100 border-slate-200 shadow-inner'">
+              <span class="text-[9px] text-slate-400 block" x-text="t('target_profit_price')">Profit Price</span>
+              <span class="text-xs font-bold font-mono mt-0.5 block" x-text="formatCurrency(targetProfitPrice)">$0.00</span>
+            </div>
+            <div class="text-center p-2 rounded-xl border border-transparent" :class="theme === 'dark' ? 'bg-[#1c1c1e] shadow-inner' : 'bg-slate-100 border-slate-200 shadow-inner'">
+              <span class="text-[9px] text-slate-400 block" x-text="t('pct_gain')">Required Gain</span>
+              <span class="text-xs font-bold font-mono text-emerald-500 mt-0.5 block" x-text="requiredProfitGain.toFixed(1) + '%'">0.0%</span>
+            </div>
+            <div class="text-center p-2 rounded-xl border border-transparent" :class="theme === 'dark' ? 'bg-[#1c1c1e] shadow-inner' : 'bg-slate-100 border-slate-200 shadow-inner'">
+              <span class="text-[9px] text-slate-400 block" x-text="t('est_profit')">Est. Profit</span>
+              <span class="text-xs font-bold font-mono text-emerald-500 mt-0.5 block" x-text="formatCurrency(estimatedProfitValue)">$0.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Blueprint -->
+      <div :class="cardClass">
+        <h2 class="text-xs font-semibold uppercase tracking-wider mb-4 opacity-70" x-text="t('blueprint')">Position Size Blueprint</h2>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div class="p-3.5 rounded-xl flex flex-col justify-between border" :class="theme === 'dark' ? 'bg-zinc-900/60 border-zinc-800' : 'bg-slate-50 border-slate-200'">
+            <span class="block text-[10px] text-slate-400 uppercase font-bold" x-text="t('total_cost')">Total Position Cost</span>
+            <span class="text-base font-bold font-mono mt-1" x-text="formatCurrency(totalPositionCost)">$0.00</span>
+            <span class="block text-[10px] opacity-60 mt-0.5" x-text="portfolioPercentUsed + ' ' + t('pct_of_portfolio')">0.00%</span>
+          </div>
+          <div class="p-3.5 rounded-xl flex flex-col justify-between border" :class="theme === 'dark' ? 'bg-zinc-900/60 border-zinc-800' : 'bg-slate-50 border-slate-200'">
+            <span class="block text-[10px] text-slate-400 uppercase font-bold" x-text="t('total_shares')">Total Target Shares</span>
+            <span class="text-base font-bold font-mono mt-1" :class="accentTextClass" x-text="totalShares">0</span>
+            <span class="block text-[10px] opacity-60 mt-0.5" x-text="t('at_stop') + ': -' + formatCurrency(portfolioSize * (targetR/100))">-$0.00</span>
+          </div>
+        </div>
+        <div class="border-t pt-3.5 mt-2 space-y-2 text-xs" :class="theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200'">
+          <div class="flex justify-between items-center">
+            <span class="opacity-60" x-text="t('calc_stop_loss')"></span>
+            <span class="font-mono font-bold" x-text="formatCurrency(finalStopPrice)"></span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="opacity-60" x-text="t('drawdown_fill')"></span>
+            <span class="font-mono font-bold" :class="calculatedSlPercent > 10 ? 'text-rose-500' : ''" x-text="calculatedSlPercent.toFixed(2) + '%'"></span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="opacity-60" x-text="t('risk_dollars')"></span>
+            <span class="font-mono font-bold text-rose-500" x-text="formatCurrency(targetR * (portfolioSize * 0.01))"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scale-in Tactics Block -->
+      <div :class="cardClass">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-xs font-semibold uppercase tracking-wider flex items-center opacity-70">
+            <i class="fa-solid fa-stairs mr-2" :class="accentTextClass"></i> <span x-text="t('scale_in')">Progressive Scale-In</span>
+          </h2>
+          <span class="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase text-xs" :class="badgeClass" x-text="t('only_average_up')">Only Average Up</span>
+        </div>
+        <div class="space-y-3">
+          <!-- Phase 1 -->
+          <div class="rounded-xl p-3 relative overflow-hidden border" :class="theme === 'dark' ? 'bg-zinc-900/60 border-zinc-800' : 'bg-slate-50 border-slate-200'">
+            <div class="absolute right-0 top-0 h-full w-1" :class="theme === 'dark' ? 'bg-[#0a84ff]' : 'bg-[#007aff]'"></div>
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <span class="text-[10px] font-bold uppercase tracking-widest block" :class="accentTextClass" x-text="t('phase1')">Phase 1: Breakout Bet</span>
+                <span class="text-[11px] opacity-60" x-text="t('phase1_sub')">Trigger breakout</span>
+              </div>
+              <div class="flex space-x-1">
+                <button @click="scaleInRatio = 0.3; calculatePosition()" :class="scaleInRatio === 0.3 ? accentBtnClass : 'bg-slate-700/20 text-slate-500'" class="text-[10px] px-2.5 py-1 rounded font-bold transition outline-none">0.3R</button>
+                <button @click="scaleInRatio = 0.4; calculatePosition()" :class="scaleInRatio === 0.4 ? accentBtnClass : 'bg-slate-700/20 text-slate-500'" class="text-[10px] px-2.5 py-1 rounded font-bold transition outline-none">0.4R</button>
+                <button @click="scaleInRatio = 0.5; calculatePosition()" :class="scaleInRatio === 0.5 ? accentBtnClass : 'bg-slate-700/20 text-slate-500'" class="text-[10px] px-2.5 py-1 rounded font-bold transition outline-none">0.5R</button>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-800/20 text-xs">
+              <div><span class="text-[10px] opacity-50 block" x-text="t('buy_shares')"></span><span class="font-mono font-bold" x-text="firstBetShares"></span></div>
+              <div><span class="text-[10px] opacity-50 block" x-text="t('req_capital')"></span><span class="font-mono font-bold" x-text="formatCurrency(firstBetCapital)"></span></div>
+            </div>
+          </div>
+
+          <!-- Phase 2 -->
+          <div class="rounded-xl p-3 relative overflow-hidden border" :class="theme === 'dark' ? 'bg-zinc-900/60 border-zinc-800' : 'bg-slate-50 border-slate-200'">
+            <div class="absolute right-0 top-0 h-full w-1" :class="theme === 'dark' ? 'bg-[#0a84ff]' : 'bg-[#007aff]'"></div>
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <span class="text-[10px] font-bold uppercase tracking-widest block" :class="accentTextClass" x-text="t('phase2')">Phase 2: Confirmation Bet</span>
+                <span class="text-[11px] opacity-60 font-semibold" :class="accentTextClass" x-text="t('phase2_sub').replace('{val}', (targetR - scaleInRatio).toFixed(1))"></span>
+              </div>
+            </div>
+            <p class="text-[11px] opacity-65 mb-2 leading-relaxed" x-text="t('phase2_desc')"></p>
+            <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/20 text-xs">
+              <div><span class="text-[10px] opacity-50 block" x-text="t('buy_shares')"></span><span class="font-mono font-bold" x-text="secondBetShares"></span></div>
+              <div><span class="text-[10px] opacity-50 block" x-text="t('conf_cost')"></span><span class="font-mono font-bold" x-text="formatCurrency(secondBetCapital)"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <button @click="addToActiveTrades()" class="w-full mt-4 font-bold rounded-[14px] py-3 text-sm shadow-md transition-all active:scale-95 flex items-center justify-center space-x-2 outline-none" :class="accentBtnClass">
+          <i class="fa-solid fa-plus"></i><span x-text="t('add_active')">Add to Active Risk Exposure</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- TAB 2: PORTFOLIO PARAMETERS & LEDGER -->
+    <div x-show="activeTab === 'portfolio'" class="space-y-4" x-transition:enter="transition ease-out duration-150">
+      
+      <!-- Portfolio Card -->
+      <div :class="cardClass">
+        <h2 class="text-sm font-semibold uppercase tracking-wider mb-4 flex items-center opacity-70">
+          <i class="fa-solid fa-wallet mr-2" :class="accentTextClass"></i> <span x-text="t('account_params')">Account Parameters</span>
+        </h2>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold opacity-70 mb-1" x-text="t('total_account_val')">Total Account Value ($)</label>
+            <div class="relative">
+              <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-mono font-medium">$</span>
+              <input type="number" inputmode="decimal" pattern="[0-9.]*" x-model.number="portfolioSize" @input="savePortfolio(); calculatePosition()"
+                class="w-full pl-8 font-bold outline-none" :class="inputClass" :style="inputStyle" placeholder="e.g. 50000">
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1.5" x-text="t('account_val_sub')"></p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold opacity-70 mb-2" x-text="t('recent_perf')">Your Recent Performance / Trend</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button @click="performanceMod = 'poor'; savePortfolio()" :class="performanceMod === 'poor' ? (theme === 'light' ? 'ring-2 ring-rose-700 text-rose-950 font-bold bg-rose-200' : 'ring-2 ring-rose-500 text-rose-500 font-bold bg-rose-500/10') : 'opacity-65'" class="rounded-xl py-2 text-[10px] transition font-semibold outline-none" :class="secondaryBtnClass"><span x-text="t('poor')">Poor</span></button>
+              <button @click="performanceMod = 'normal'; savePortfolio()" :class="performanceMod === 'normal' ? (theme === 'light' ? 'ring-2 ring-slate-800 text-slate-950 font-bold bg-slate-300' : 'ring-2 ring-slate-400 text-slate-100 bg-slate-400/10') : 'opacity-65'" class="rounded-xl py-2 text-[10px] transition font-semibold outline-none" :class="secondaryBtnClass"><span x-text="t('normal')">Normal</span></button>
+              <button @click="performanceMod = 'hot'; savePortfolio()" :class="performanceMod === 'hot' ? (theme === 'light' ? 'ring-2 ring-emerald-700 text-emerald-950 font-bold bg-emerald-200' : 'ring-2 ring-emerald-500 text-emerald-500 bg-emerald-500/10') : 'opacity-65'" class="rounded-xl py-2 text-[10px] transition font-semibold outline-none" :class="secondaryBtnClass"><span x-text="t('hot')">Hot</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Portfolio Allocation Breakdowns Progress Gauges -->
+      <div :class="cardClass" class="space-y-4">
+        <h3 class="text-xs font-semibold uppercase tracking-wider opacity-70 flex items-center">
+          <i class="fa-solid fa-chart-pie mr-2 text-emerald-500"></i>
+          <span x-text="lang === 'en' ? 'Portfolio Allocation Breakdown' : '投資組合配置拆解'">Portfolio Allocation Breakdown</span>
+        </h3>
+        
+        <!-- Total Asset in Market Bar -->
+        <div class="space-y-2">
+          <div class="flex justify-between items-center text-xs">
+            <span class="opacity-75 font-semibold" x-text="lang === 'en' ? 'Total Asset in Market' : '活期市值總額'">Total Asset in Market</span>
+            <span class="font-bold font-mono">
+              <span class="text-emerald-500" x-text="formatCurrency(calculateTotalAssetValue())"></span>
+              <span class="text-slate-400 text-[10px] ml-1" x-text="'(' + ((calculateTotalAssetValue() / (portfolioSize || 1)) * 100).toFixed(1) + '%)'"></span>
+            </span>
+          </div>
+          <div class="w-full h-2.5 rounded-full overflow-hidden border" :class="theme === 'dark' ? 'bg-slate-950 border-zinc-800' : 'bg-slate-200 border-zinc-300'">
+            <div class="h-full rounded-full transition-all duration-300 bg-emerald-500" :style="'width: ' + Math.min(((calculateTotalAssetValue() / (portfolioSize || 1)) * 100), 100) + '%'"></div>
+          </div>
+        </div>
+
+        <!-- Remaining Cash Bar -->
+        <div class="space-y-2">
+          <div class="flex justify-between items-center text-xs">
+            <span class="opacity-75 font-semibold" x-text="lang === 'en' ? 'Remaining Cash Value' : '剩餘可用資金'">Remaining Cash Value</span>
+            <span class="font-bold font-mono">
+              <span :class="accentTextClass" x-text="formatCurrency(calculateRemainingCash())"></span>
+              <span class="text-slate-400 text-[10px] ml-1" x-text="'(' + ((calculateRemainingCash() / (portfolioSize || 1)) * 100).toFixed(1) + '%)'"></span>
+            </span>
+          </div>
+          <div class="w-full h-2.5 rounded-full overflow-hidden border" :class="theme === 'dark' ? 'bg-slate-950 border-zinc-800' : 'bg-slate-200 border-zinc-300'">
+            <div class="h-full rounded-full transition-all duration-300" :class="theme === 'dark' ? 'bg-[#0a84ff]' : 'bg-[#007aff]'" :style="'width: ' + Math.min(((calculateRemainingCash() / (portfolioSize || 1)) * 100), 100) + '%'"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Risk Thermometer -->
+      <div :class="cardClass" class="space-y-4">
+        <h2 class="text-xs font-semibold uppercase tracking-wider opacity-70" x-text="t('exposure_thermometer')"></h2>
+        <div>
+          <div class="flex justify-between items-center text-xs mb-1">
+            <span class="opacity-70" x-text="t('total_live_exposure')"></span>
+            <span class="font-bold font-mono text-sm" :class="totalActiveRisk > getMaxExposureR() ? 'text-rose-500' : accentTextClass" x-text="totalActiveRisk.toFixed(1) + ' / ' + getMaxExposureR() + ' R'">0.0 R</span>
+          </div>
+          <div class="w-full h-3 rounded-full overflow-hidden border" :class="theme === 'dark' ? 'bg-slate-950 border-zinc-800' : 'bg-slate-200 border-zinc-300'">
+            <div class="h-full rounded-full transition-all duration-300" :class="totalActiveRisk > getMaxExposureR() ? 'bg-rose-500' : (theme === 'dark' ? 'bg-[#0a84ff]' : 'bg-[#007aff]')" :style="'width: ' + Math.min((totalActiveRisk / getMaxExposureR()) * 100, 100) + '%'"></div>
+          </div>
+          <p class="text-[10px] opacity-65 mt-1.5" x-text="getExposureStatusMessage()"></p>
+        </div>
+        <div class="border rounded-xl p-3 flex justify-between items-center text-xs" :class="theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200'">
+          <span class="opacity-60" x-text="t('open_positions')"></span>
+          <div>
+            <span class="font-bold font-mono mr-1" x-text="activeTrades.length">0</span>
+            <span class="text-[10px] font-bold" :class="activeTrades.length >= 4 && activeTrades.length <= 10 ? 'text-emerald-500' : 'text-amber-500'" x-text="activeTrades.length >= 4 && activeTrades.length <= 10 ? t('optimal') : t('aim_for')"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Ledger -->
+      <div :class="cardClass">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xs font-semibold uppercase tracking-wider flex items-center opacity-70">
+            <i class="fa-solid fa-list-check mr-2" :class="accentTextClass"></i> <span x-text="t('active_ledger')"></span>
+          </h2>
+          <div class="flex items-center space-x-3">
+            <button @click="updateAllLedgerPrices()" x-show="activeTrades.length > 0" class="text-[10px] font-bold px-2 py-1 rounded transition border shadow-sm outline-none" :class="secondaryBtnClass">
+              <i class="fa-solid fa-arrows-rotate mr-1"></i><span x-text="t('update_ledger_prices')"></span>
+            </button>
+            <button @click="clearAllTrades()" class="text-[10px] text-rose-500 hover:underline font-bold outline-none" x-text="t('clear_all')"></button>
+          </div>
+        </div>
+
+        <template x-if="activeTrades.length === 0">
+          <div class="text-center py-6 border border-dashed rounded-xl" :class="theme === 'dark' ? 'border-zinc-800' : 'border-zinc-300'">
+            <i class="fa-solid fa-folder-open text-slate-600 text-xl mb-1.5"></i>
+            <p class="text-xs opacity-60 px-3" x-text="t('no_active')"></p>
+          </div>
+        </template>
+
+        <div class="space-y-2">
+          <template x-for="(trade, index) in activeTrades" :key="index">
+            <div class="rounded-xl border transition-all duration-200" :class="theme === 'dark' ? 'bg-[#151f32]/40 border-zinc-800' : 'bg-slate-50 border-zinc-200'">
+              <div class="p-3 flex justify-between items-center">
+                <div class="flex-grow">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-xs font-bold font-mono text-indigo-500" x-text="trade.symbol"></span>
+                    <span class="text-[10px] font-mono opacity-80" x-text="'Entry @' + formatCurrency(trade.entryPrice)"></span>
+                    <template x-if="trade.currentPrice && trade.currentPrice !== trade.entryPrice">
+                      <span class="text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm" :class="(trade.currentPrice >= trade.entryPrice) ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'">
+                        <span x-text="(trade.currentPrice >= trade.entryPrice ? '+' : '') + (((trade.currentPrice - trade.entryPrice)/trade.entryPrice)*100).toFixed(1) + '%'"></span>
+                      </span>
+                    </template>
+                  </div>
+                  <div class="text-[10px] opacity-70 mt-1">
+                    <span x-text="t('cost')"></span>: <span class="font-mono font-semibold" x-text="formatCurrency(trade.cost)"></span> | 
+                    <span x-text="t('sl')"></span>: <span class="font-mono text-rose-500 font-semibold" x-text="formatCurrency(trade.stopPrice)"></span> 
+                    (<span class="font-mono text-rose-500" x-text="trade.slPercent.toFixed(1) + '%'"></span>)
+                  </div>
+                  <template x-if="trade.currentPrice">
+                    <div class="text-[9px] mt-0.5 font-mono opacity-80">
+                      <span x-text="t('current_price')"></span>: <strong class="text-slate-500 dark:text-slate-300" x-text="formatCurrency(trade.currentPrice)"></strong>
+                    </div>
+                  </template>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <div class="text-right">
+                    <span class="text-xs font-bold font-mono block" :class="accentTextClass" x-text="trade.riskR.toFixed(1) + ' R'"></span>
+                    <template x-if="trade.currentPrice">
+                      <span class="text-[8px] font-mono opacity-60" x-text="trade.currentPrice <= trade.stopPrice ? '0.0R left' : (((trade.currentPrice - trade.stopPrice)/(trade.entryPrice - trade.stopPrice))*trade.riskR).toFixed(1) + 'R left'"></span>
+                    </template>
+                  </div>
+                  <button @click="startEditTrade(index)" class="text-slate-500 hover:text-indigo-400 p-1.5 transition outline-none"><i class="fa-solid fa-pen-to-square"></i></button>
+                  <button @click="removeTrade(index)" class="text-slate-500 hover:text-rose-500 p-1.5 transition outline-none"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+              </div>
+
+              <!-- Inline Edit Panel -->
+              <div x-show="editingIndex === index" class="p-3 border-t rounded-b-xl space-y-3" :class="theme === 'dark' ? 'border-zinc-800 bg-zinc-900/60' : 'border-zinc-300 bg-slate-200/50'">
+                <div class="text-[11px] font-bold uppercase tracking-wider opacity-80" x-text="t('editing_pos')"></div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div><label class="block text-[10px] opacity-70 mb-1" x-text="t('symbol_lbl')"></label><input type="text" x-model="editSymbol" class="w-full text-xs font-mono outline-none" :class="inputClass" :style="inputStyle"></div>
+                  <div><label class="block text-[10px] opacity-70 mb-1" x-text="t('target_max_risk')"></label><input type="number" step="0.1" min="0.1" max="2.0" x-model.number="editRiskR" class="w-full text-xs font-mono outline-none" :class="inputClass" :style="inputStyle"></div>
+                  <div><label class="block text-[10px] opacity-70 mb-1" x-text="t('entry_price')"></label><input type="number" step="any" x-model.number="editEntryPrice" class="w-full text-xs font-mono outline-none" :class="inputClass" :style="inputStyle"></div>
+                  <div><label class="block text-[10px] opacity-70 mb-1" x-text="t('sl_price')"></label><input type="number" step="any" x-model.number="editStopPrice" class="w-full text-xs font-mono outline-none" :class="inputClass" :style="inputStyle"></div>
+                  <div class="col-span-2"><label class="block text-[10px] opacity-70 mb-1" x-text="t('current_price')"></label><input type="number" step="any" x-model.number="editCurrentPrice" class="w-full text-xs font-mono outline-none" :class="inputClass" :style="inputStyle"></div>
+                </div>
+                <div class="flex space-x-2 pt-1 justify-end">
+                  <button @click="cancelEdit()" class="px-3 py-1.5 rounded-lg text-xs font-bold outline-none" :class="secondaryBtnClass" x-text="t('cancel')"></button>
+                  <button @click="saveEditTrade()" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-600 outline-none" x-text="t('save')"></button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: RULES CHEAT SHEET & ADVANCED SETTINGS -->
+    <div x-show="activeTab === 'rules'" class="space-y-4" x-transition:enter="transition ease-out duration-150">
+      
+      <!-- Theme Selection Panel -->
+      <div :class="cardClass">
+        <h2 class="text-sm font-semibold uppercase tracking-wider mb-4 flex items-center opacity-70">
+          <i class="fa-solid fa-palette mr-2 text-indigo-400"></i> <span x-text="t('theme_layout')">Theme Selection</span>
+        </h2>
+        <div class="grid grid-cols-2 gap-2">
+          <button @click="theme = 'light'; savePortfolio()"
+            :class="theme === 'light' ? 'ring-2 ring-[#007aff] text-black bg-white shadow-sm' : 'opacity-65'"
+            class="rounded-xl py-2.5 text-xs transition font-semibold outline-none" :class="secondaryBtnClass">
+            <span x-text="t('light_theme')">Light Theme</span>
+          </button>
+          <button @click="theme = 'dark'; savePortfolio()"
+            :class="theme === 'dark' ? 'ring-2 ring-[#0a84ff] text-white bg-[#1c1c1e]' : 'opacity-65'"
+            class="rounded-xl py-2.5 text-xs transition font-semibold outline-none" :class="secondaryBtnClass">
+            <span x-text="t('dark_theme')">Dark Theme</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Rules -->
+      <div :class="cardClass" class="space-y-4">
+        <h2 class="text-sm font-bold flex items-center opacity-70">
+          <i class="fa-solid fa-shield-halved mr-2" :class="accentTextClass"></i> <span x-text="t('strategy_rules')">Course Risk Rules Cheat Sheet</span>
+        </h2>
+        <div class="space-y-3">
+          <div class="p-3.5 rounded-xl border flex items-start space-x-3" :class="theme === 'dark' ? 'bg-[#151f32]/40 border-zinc-800' : 'bg-slate-50 border-zinc-200'">
+            <div class="p-1.5 rounded-lg text-xs font-bold font-mono" :class="badgeClass">1R</div>
+            <div><h3 class="text-xs font-bold" x-text="t('rule1_title')"></h3><p class="text-[11px] opacity-65 mt-0.5" x-text="t('rule1_desc')"></p></div>
+          </div>
+          <div class="p-3.5 rounded-xl border flex items-start space-x-3" :class="theme === 'dark' ? 'bg-[#151f32]/40 border-zinc-800' : 'bg-slate-50 border-zinc-200'">
+            <div class="p-1.5 rounded-lg text-xs font-bold font-mono" :class="badgeClass">20R</div>
+            <div><h3 class="text-xs font-bold" x-text="t('rule2_title')"></h3><p class="text-[11px] opacity-65 mt-0.5" x-text="t('rule2_desc')"></p></div>
+          </div>
+          <div class="p-3.5 rounded-xl border flex items-start space-x-3" :class="theme === 'dark' ? 'bg-[#151f32]/40 border-zinc-800' : 'bg-slate-50 border-zinc-200'">
+            <div class="p-1.5 rounded-lg text-xs font-bold font-mono" :class="badgeClass">10R</div>
+            <div><h3 class="text-xs font-bold" x-text="t('rule3_title')"></h3><p class="text-[11px] opacity-65 mt-0.5" x-text="t('rule3_desc')"></p></div>
+          </div>
+          <div class="p-3.5 rounded-xl border flex items-start space-x-3" :class="theme === 'dark' ? 'bg-[#151f32]/40 border-zinc-800' : 'bg-slate-50 border-zinc-200'">
+            <div class="p-1.5 rounded-lg text-xs font-bold font-mono" :class="badgeClass">2R</div>
+            <div><h3 class="text-xs font-bold" x-text="t('rule4_title')"></h3><p class="text-[11px] opacity-65 mt-0.5" x-text="t('rule4_desc')"></p></div>
+          </div>
+          <div class="p-3.5 rounded-xl border flex items-start space-x-3" :class="theme === 'dark' ? 'bg-[#151f32]/40 border-zinc-800' : 'bg-slate-50 border-zinc-200'">
+            <div class="p-1.5 rounded-lg text-xs font-bold" :class="badgeClass">VCP</div>
+            <div><h3 class="text-xs font-bold" x-text="t('rule5_title')"></h3><p class="text-[11px] opacity-65 mt-0.5" x-text="t('rule5_desc')"></p></div>
+          </div>
+          <div class="p-3.5 rounded-xl border flex items-start space-x-3" :class="theme === 'dark' ? 'bg-[#151f32]/40 border-zinc-800' : 'bg-slate-50 border-zinc-200'">
+            <div class="p-1.5 rounded-lg text-xs font-bold" :class="badgeClass">1/2</div>
+            <div><h3 class="text-xs font-bold" x-text="t('rule6_title')"></h3><p class="text-[11px] opacity-65 mt-0.5" x-text="t('rule6_desc')"></p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Mobile Tab Navigation Bar (Fixed for Safe Area bottom spacing) -->
+  <nav class="border-t fixed bottom-0 left-0 right-0 z-50 transition-colors nav-safe"
+    :class="theme === 'dark' ? 'bg-black border-[#1c1c1e]' : 'bg-white border-[#e5e5ea] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]'">
+    <div class="max-w-md mx-auto grid grid-cols-3 gap-1 px-2 py-2">
+      <button @click="activeTab = 'calc'" class="flex flex-col items-center justify-center text-xs py-1.5 transition-colors outline-none" :class="activeTab === 'calc' ? accentTextClass : 'text-slate-500 hover:text-slate-300'">
+        <i class="fa-solid fa-calculator text-lg mb-1"></i><span x-text="t('calculator')"></span>
+      </button>
+      <button @click="activeTab = 'portfolio'" class="flex flex-col items-center justify-center text-xs py-1.5 relative transition-colors outline-none" :class="activeTab === 'portfolio' ? accentTextClass : 'text-slate-500 hover:text-slate-300'">
+        <i class="fa-solid fa-wallet text-lg mb-1"></i><span x-text="t('portfolio')"></span>
+        <template x-if="activeTrades.length > 0"><span class="absolute top-1 right-8 w-2 h-2 bg-rose-500 rounded-full animate-ping"></span></template>
+      </button>
+      <button @click="activeTab = 'rules'" class="flex flex-col items-center justify-center text-xs py-1.5 transition-colors outline-none" :class="activeTab === 'rules' ? accentTextClass : 'text-slate-500 hover:text-slate-300'">
+        <i class="fa-solid fa-shield-halved text-lg mb-1"></i><span x-text="t('rules')"></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Dynamic Notification toast alerts -->
+  <div x-show="toastShow" 
+       x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-y-2" x-transition:enter-end="opacity-100 transform translate-y-0"
+       x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform translate-y-0" x-transition:leave-end="opacity-0 transform translate-y-2"
+       class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-xs border p-3.5 rounded-2xl shadow-2xl flex items-center space-x-2.5 text-xs font-semibold backdrop-blur-md"
+       :class="theme === 'dark' ? 'bg-[#1c1c1e] border-zinc-700 text-slate-100' : 'bg-white border-zinc-200 text-slate-900'" style="display: none;">
+    <i class="fa-solid fa-circle-check text-emerald-500 text-lg"></i>
+    <span x-text="toastMessage"></span>
+  </div>
+
+</body>
+</html>

@@ -7,8 +7,6 @@
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Identity Services (GSI) for Google Drive Authentication -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
   
   <script>
     tailwind.config = {
@@ -97,37 +95,14 @@
 <body class="bg-iosBgLight dark:bg-iosBgDark text-gray-900 dark:text-white transition-colors duration-300">
   <div id="root"></div>
 
-  <!-- Load React, ReactDOM, HTM, and Firebase via Native ES Modules -->
+  <!-- Load React, ReactDOM, HTM, and TradingView Snapshot Embed natively -->
   <script type="module">
     import React, { useState, useEffect, useMemo, useRef } from 'https://esm.sh/react@18.2.0';
     import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
     import htm from 'https://esm.sh/htm@3.1.1';
 
-    // Firebase modular imports
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
-    import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
-    import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
-
     // Bind htm to React's createElement
     const html = htm.bind(React.createElement);
-
-    // --- Firebase Initialization Setup ---
-    let db = null;
-    let auth = null;
-    let appId = typeof __app_id !== 'undefined' ? __app_id : 'vcp-risk-calc';
-    let isFirebaseConfigured = false;
-
-    if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-      try {
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
-        db = getFirestore(app);
-        isFirebaseConfigured = true;
-      } catch (e) {
-        console.error("Firebase startup failed:", e);
-      }
-    }
 
     // --- Localization Dictionary ---
     const translations = {
@@ -144,6 +119,9 @@
         stopLossModePercent: "Percentage %",
         targetRisk: "Target Risk (R)",
         rrRatio: "Risk-to-Reward Ratio (R:R)",
+        rrModeRatio: "Ratio",
+        rrModePrice: "Target Price",
+        rrModePercent: "Target %",
         chartTabs: { W: "Weekly", D: "Daily", "60": "1-Hour", "5": "5-Min" },
         tradePlan: "Trade Plan & Results",
         positionSize: "Position Size (Shares/Coins)",
@@ -169,15 +147,21 @@
         noTrades: "No active trades in portfolio.",
         totalExposure: "Total Exposure (In-Market Capital)",
         riskThermometer: "Live Risk Thermometer (Max 10R)",
-        fetchingPrice: "Fetching Live Price (TradingView feed)...",
+        fetchingPrice: "Fetching Live Price...",
         cloudSyncing: "Cloud Sync Enabled ✓",
         localMode: "Session Mode (Local Only)",
-        googleDriveTitle: "Google Drive Backup Sync",
-        googleDriveDesc: "Enable secure persistent storage across all your mobile and desktop devices by logging in to Google Drive.",
-        googleLoginBtn: "Connect Google Drive",
-        googleLogoutBtn: "Disconnect Drive",
-        clientIdPlaceholder: "Enter your Google OAuth Client ID",
+        googleDriveTitle: "Google Sheets Backup Sync",
+        googleDriveDesc: "Configure your secure Google Apps Script bridge below to synchronize, backup, and pull active trades with your spreadsheet.",
+        googleLoginBtn: "Pull Trades (Read)",
+        googleLogoutBtn: "Push Trades (Backup)",
         overallPnL: "Portfolio Net P&L",
+        googleSheetLinkLabel: "1. Google Sheet Shareable URL",
+        googleWebAppUrlLabel: "2. Google Apps Script Web App Deployment URL",
+        googleInstructions: "Deployment Info: Avoid OAuth redirect barriers on local or sandbox hostnames. Copy-paste the provided Apps Script into your sheet (Extensions > Apps Script), publish it as a Web App (Anyone can access), and paste the URLs below to sync instantly.",
+        tradingNotes: "Trading Rationale Notes",
+        notesPlaceholder: "Enter your strategy notes, VCP breakout criteria, or catalyst rationale...",
+        editNote: "Edit Note",
+        saveNote: "Save",
       },
       zh: {
         title: "VCP 風險管理",
@@ -192,6 +176,9 @@
         stopLossModePercent: "百分比 %",
         targetRisk: "目標風險 (Target Risk - R)",
         rrRatio: "風險回報比 (Risk-to-Reward Ratio - R:R)",
+        rrModeRatio: "比率 (1:X)",
+        rrModePrice: "目標價格",
+        rrModePercent: "目標百分比 %",
         chartTabs: { W: "週線", D: "日線", "60": "1小時", "5": "5分鐘" },
         tradePlan: "交易計畫與結果",
         positionSize: "倉位大小 (股/數量)",
@@ -217,15 +204,21 @@
         noTrades: "投資組合目前無倉位。",
         totalExposure: "總持倉曝險 (Total Exposure - Capital)",
         riskThermometer: "實時風險溫度計 (上限 10R)",
-        fetchingPrice: "正在獲取最新報價 (TradingView 數據源)...",
+        fetchingPrice: "正在獲取最新報價...",
         cloudSyncing: "雲端永久同步中 ✓",
         localMode: "單次會話模式 (未連接雲端)",
-        googleDriveTitle: "Google雲端硬碟數據備份",
-        googleDriveDesc: "使用 Google Drive 登入來開啟高度持久性雲端同步。可在您所有的手機與電腦間同步數據。",
-        googleLoginBtn: "連接 Google Drive",
-        googleLogoutBtn: "中斷 Drive 連接",
-        clientIdPlaceholder: "請輸入您的 Google OAuth 用戶端 ID",
+        googleDriveTitle: "Google Sheets 試算表備份同步",
+        googleDriveDesc: "在下方配置您的 Google Apps Script 橋接，以便在您的瀏覽器與雲端 Google 試算表之間完美同步紀錄。",
+        googleLoginBtn: "載入試算表數據 (Pull)",
+        googleLogoutBtn: "上傳數據備份 (Push)",
         overallPnL: "投資組合淨損益 (Net P&L)",
+        googleSheetLinkLabel: "1. Google 試算表共用連結 (Google Sheet URL)",
+        googleWebAppUrlLabel: "2. Google Apps Script 網頁應用程式部署網址 (Web App URL)",
+        googleInstructions: "部署提示: 為避免本機或 GitHub Pages 網域在 Google 登入時安全阻擋報錯，本程式改用更穩定流暢的 Apps Script 網頁應用程式。請將所得網址與試算表網址填於下方即可同步。",
+        tradingNotes: "交易心得與邏輯備忘 (Notes)",
+        notesPlaceholder: "記錄您的 VCP 收縮形態特徵、成交量突破、板塊催化劑或任何交易備忘...",
+        editNote: "編輯備忘",
+        saveNote: "儲存",
       }
     };
 
@@ -249,6 +242,14 @@
 
     const parseCommas = (str) => {
       return str.replace(/,/g, '');
+    };
+
+    // --- Dynamic R Scale Formatting ---
+    // If round number, no decimal places. Else, exactly 1 decimal place.
+    const formatR = (value) => {
+      const num = parseFloat(value);
+      if (isNaN(num)) return '';
+      return num % 1 === 0 ? num.toFixed(0) : num.toFixed(1);
     };
 
     // --- Cookie Utility Fallback to prevent Safari Data Eviction ---
@@ -289,18 +290,19 @@
     const TrashIcon = ({ className }) => html`<svg class=${`w-[1.25em] h-[1.25em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>`;
     const ActivityIcon = ({ className }) => html`<svg class=${`w-[0.75em] h-[0.75em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
     const CloudIcon = ({ className }) => html`<svg class=${`w-[1.25em] h-[1.25em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>`;
+    const EditIcon = ({ className }) => html`<svg class=${`w-[1em] h-[1em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>`;
+    const SaveIcon = ({ className }) => html`<svg class=${`w-[1em] h-[1em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V10l-6-6zm8 14H8v-2h8v2zm0-6H8V8h8v2z" /></svg>`;
 
     function App() {
       const [lang, setLang] = useState('en');
       const [theme, setTheme] = useState('light');
       const [fontScaleIdx, setFontScaleIdx] = useState(2);
       const [activeTab, setActiveTab] = useState('calc'); 
-      const [user, setUser] = useState(null);
       
-      // Local Backup / Google Drive States
-      const [gdriveClientId, setGdriveClientId] = useState(() => localStorage.getItem('vcp_gdrive_client_id') || '');
-      const [gdriveToken, setGdriveToken] = useState(null);
-      const [gdriveFileId, setGdriveFileId] = useState(null);
+      // Customizable Google Apps Script Web Sync state
+      const [gdriveSheetUrl, setGdriveSheetUrl] = useState(() => localStorage.getItem('vcp_gdrive_sheet_url') || '');
+      const [gdriveWebAppUrl, setGdriveWebAppUrl] = useState(() => localStorage.getItem('vcp_gdrive_webapp_url') || '');
+      const [showGdriveConfig, setShowGdriveConfig] = useState(false);
       const [syncStatus, setSyncStatus] = useState(''); // 'synced', 'syncing', 'error', ''
 
       // Portfolio States (With input formatting)
@@ -316,200 +318,134 @@
       const [isFetchingPrice, setIsFetchingPrice] = useState(false);
       const [entry, setEntry] = useState('');
 
+      // Notes and Rationale State
+      const [rationale, setRationale] = useState('');
+      const [editingTradeId, setEditingTradeId] = useState(null);
+      const [editTradeNotes, setEditTradeNotes] = useState('');
+
       // Stop Loss Mode & Value Integration
       const [slMode, setSlMode] = useState('price'); // 'price' or 'percent'
       const [slValue, setSlValue] = useState(''); // Holds raw user input
 
+      // --- Flexible Risk-to-Reward Segment State ---
+      const [rrMode, setRrMode] = useState('ratio'); // 'ratio', 'price', or 'percent'
+      const [rrValue, setRrValue] = useState('2.00'); // Raw user-input value for R:R
+
       const [riskR, setRiskR] = useState(1.0); 
-      const [rrRatio, setRrRatio] = useState(2.0);
       const [interval, setInterval] = useState('D');
 
       const chartContainerRef = useRef(null);
       const t = translations[lang];
 
-      // --- Custom Dynamic Price Fetch Helper ---
+      // --- Highly Resilient Dual-Proxy Stock Price Fetch Helper ---
       const fetchPriceForSymbol = async (symbol) => {
         let parsedSymbol = symbol.trim().toUpperCase();
-        let exchange = "NASDAQ";
+        if (!parsedSymbol) return null;
+        
+        let yahooSymbol = parsedSymbol;
+        // Map common exchanges
         if (/^\d{4}$/.test(parsedSymbol)) {
-          exchange = "HKEX";
+          yahooSymbol = `${parsedSymbol}.HK`;
         } else if (['BTC', 'ETH', 'SOL', 'XRP', 'ADA', 'DOGE'].includes(parsedSymbol)) {
-          exchange = "BINANCE";
-          parsedSymbol = `${parsedSymbol}USDT`;
+          yahooSymbol = `${parsedSymbol}-USD`;
         }
 
+        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1m&range=1d`;
+        
+        // Strategy A: Try high-performance CORS proxy corsproxy.io
         try {
-          const queryUrl = `https://symbols-trader.tradingview.com/symbols?symbol=${exchange}:${parsedSymbol}`;
-          const response = await fetch(queryUrl);
-          if (response.ok) {
-            const data = await response.json();
-            if (data && data.length > 0) {
-              const tvPrice = data[0].price || data[0].last_price || data[0].lp;
-              if (tvPrice) return parseFloat(tvPrice);
-            }
-          }
-        } catch (e) {
-          console.warn("TV quote feed failed for " + symbol, e);
-        }
-
-        // Yahoo Finance CORS-proxy Backup
-        try {
-          let backupSymbol = parsedSymbol;
-          if (/^\d{4}$/.test(backupSymbol)) backupSymbol += '.HK';
-          else if (['BTC', 'ETH', 'SOL', 'XRP'].includes(backupSymbol)) backupSymbol += '-USD';
-
-          const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${backupSymbol}?interval=1m&range=1d`)}`);
-          if (response.ok) {
-            const data = await response.json();
+          const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(yahooUrl)}`);
+          if (res.ok) {
+            const data = await res.json();
             const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
             if (price) return parseFloat(price);
           }
-        } catch (error) {
-          console.error("Yahoo backup feed also failed for " + symbol, error);
+        } catch (e) {
+          console.warn("Primary CORS proxy failed, falling back to AllOrigins...", e);
+        }
+
+        // Strategy B: Fallback to AllOrigins raw reader
+        try {
+          const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`);
+          if (res.ok) {
+            const data = await res.json();
+            const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+            if (price) return parseFloat(price);
+          }
+        } catch (e) {
+          console.error("All proxies failed to fetch quote for " + symbol, e);
         }
         return null;
       };
 
-      // --- Google Drive API Integration Syncing functions ---
-      const syncWithGoogleDrive = async (accessToken) => {
+      // --- Google Sheets Synchronization Engine via Web App CORS Proxy ---
+      const pullTradesFromGoogleSheets = async () => {
+        if (!gdriveWebAppUrl || !gdriveSheetUrl) {
+          setSyncStatus('error');
+          return;
+        }
         setSyncStatus('syncing');
         try {
-          // Search for existing vcp_portfolio.json file
-          const searchUrl = `https://www.googleapis.com/drive/v3/files?q=name='vcp_portfolio_data.json'+and+trashed=false&fields=files(id,name)`;
-          const res = await fetch(searchUrl, {
-            headers: { 'Authorization': `Bearer ${accessToken}` }
-          });
-          const searchData = await res.json();
-          
-          if (searchData.files && searchData.files.length > 0) {
-            const fileId = searchData.files[0].id;
-            setGdriveFileId(fileId);
-            
-            // Download existing data
-            const downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
-            const downloadRes = await fetch(downloadUrl, {
-              headers: { 'Authorization': `Bearer ${accessToken}` }
-            });
-            const cloudState = await downloadRes.json();
-            
-            if (cloudState) {
-              if (cloudState.portfolioInput) setPortfolioInput(cloudState.portfolioInput);
-              if (cloudState.rPercent) setRPercent(cloudState.rPercent);
-              if (cloudState.trades) setTrades(cloudState.trades);
+          const url = `${gdriveWebAppUrl}?sheetUrl=${encodeURIComponent(gdriveSheetUrl)}`;
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data && data.status === 'success') {
+            if (data.trades && Array.isArray(data.trades)) {
+              setTrades(data.trades);
+              saveLocalData(portfolioInput, rPercent, data.trades);
             }
-            setSyncStatus('synced');
-          } else {
-            // Create a new storage file on Google Drive
-            await uploadNewStateToGoogle(accessToken, portfolioInput, rPercent, trades);
-          }
-        } catch (e) {
-          console.error("GDrive Sync Fail", e);
-          setSyncStatus('error');
-        }
-      };
-
-      const uploadNewStateToGoogle = async (token, pInput, rPerc, trds) => {
-        const metadata = {
-          name: 'vcp_portfolio_data.json',
-          mimeType: 'application/json'
-        };
-        const body = {
-          portfolioInput: pInput,
-          rPercent: rPerc,
-          trades: trds
-        };
-
-        const form = new FormData();
-        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-        form.append('file', new Blob([JSON.stringify(body)], { type: 'application/json' }));
-
-        try {
-          const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: form
-          });
-          const fileInfo = await res.json();
-          if (fileInfo && fileInfo.id) {
-            setGdriveFileId(fileInfo.id);
-            setSyncStatus('synced');
-          }
-        } catch (e) {
-          console.error("Create Cloud File error:", e);
-          setSyncStatus('error');
-        }
-      };
-
-      const updateStateInGoogle = async (token, fileId, pInput, rPerc, trds) => {
-        if (!token || !fileId) return;
-        setSyncStatus('syncing');
-        const body = {
-          portfolioInput: pInput,
-          rPercent: rPerc,
-          trades: trds
-        };
-
-        try {
-          const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
-            method: 'PATCH',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body)
-          });
-          if (res.ok) {
             setSyncStatus('synced');
           } else {
             setSyncStatus('error');
           }
         } catch (e) {
-          console.error("Cloud update failed:", e);
+          console.error("Google Sheets pull failed", e);
           setSyncStatus('error');
         }
       };
 
-      const handleGoogleLogin = () => {
-        if (!gdriveClientId) return;
+      const pushTradesToGoogleSheets = async (activeTradesList = trades) => {
+        if (!gdriveWebAppUrl || !gdriveSheetUrl) return;
+        setSyncStatus('syncing');
         try {
-          const tokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: gdriveClientId,
-            scope: 'https://www.googleapis.com/auth/drive.file',
-            callback: async (tokenResponse) => {
-              if (tokenResponse && tokenResponse.access_token) {
-                setGdriveToken(tokenResponse.access_token);
-                await syncWithGoogleDrive(tokenResponse.access_token);
-              }
+          const payload = {
+            sheetUrl: gdriveSheetUrl,
+            trades: activeTradesList
+          };
+          const res = await fetch(gdriveWebAppUrl, {
+            method: 'POST',
+            mode: 'no-cors', // bypass preflight checks securely on self-hosted instances
+            headers: {
+              'Content-Type': 'application/json'
             },
+            body: JSON.stringify(payload)
           });
-          tokenClient.requestAccessToken();
+          setSyncStatus('synced');
         } catch (e) {
-          console.error("GDrive OAuth setup failed", e);
+          console.error("Sheets push failed", e);
+          setSyncStatus('error');
         }
       };
 
-      const handleGoogleLogout = () => {
-        setGdriveToken(null);
-        setGdriveFileId(null);
-        setSyncStatus('');
+      const handleSaveSheetUrl = (val) => {
+        setGdriveSheetUrl(val);
+        localStorage.setItem('vcp_gdrive_sheet_url', val);
       };
 
-      // Save Client ID choice locally
-      const handleSaveClientId = (val) => {
-        setGdriveClientId(val);
-        localStorage.setItem('vcp_gdrive_client_id', val);
+      const handleSaveWebAppUrl = (val) => {
+        setGdriveWebAppUrl(val);
+        localStorage.setItem('vcp_gdrive_webapp_url', val);
       };
 
-      // --- Hybrid Cookie & LocalStorage Load/Save fallbacks for maximum iOS persistency ---
+      // --- Hybrid Cookie & LocalStorage Load/Save fallbacks ---
       useEffect(() => {
-        // Init Local Load
         const cached = localStorage.getItem('vcp_state') || getCookieBackup('vcp_state');
         if (cached) {
           try {
             const data = JSON.parse(cached);
             if (data.portfolioInput) setPortfolioInput(data.portfolioInput);
             if (data.rPercent) setRPercent(data.rPercent);
-            if (data.trades) setTrades(data.trades);
+            if (data.trades && Array.isArray(data.trades)) setTrades(data.trades);
           } catch (e) {
             console.warn("Cached recovery failed", e);
           }
@@ -522,63 +458,14 @@
         setCookieBackup('vcp_state', payload, 365);
       };
 
-      // --- Authenticate Firebase (If configured) ---
-      useEffect(() => {
-        if (!isFirebaseConfigured) return;
-        const initAuth = async () => {
-          try {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-              await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-              await signInAnonymously(auth);
-            }
-          } catch (e) {
-            console.error("Auth failed:", e);
-          }
-        };
-        initAuth();
-        const unsubscribe = onAuthStateChanged(auth, setUser);
-        return () => unsubscribe();
-      }, []);
-
-      // --- Sync Portfolio state from Firestore (Cloud DB) ---
-      useEffect(() => {
-        if (!isFirebaseConfigured || !user) return;
-        const userDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'state');
-        
-        const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            if (data.portfolioInput !== undefined) setPortfolioInput(data.portfolioInput);
-            if (data.rPercent !== undefined) setRPercent(data.rPercent);
-            if (data.trades !== undefined) setTrades(data.trades);
-          }
-        }, (err) => {
-          console.error("Firestore Loading Error:", err);
-        });
-
-        return () => unsubscribe();
-      }, [user]);
-
       // Global Orchestrated Save Engine
       const triggerSave = (newPortfolio, newRPercent, newTrades) => {
         // 1. Local Fallback save
         saveLocalData(newPortfolio, newRPercent, newTrades);
 
-        // 2. Google Drive Save (If Connected)
-        if (gdriveToken && gdriveFileId) {
-          updateStateInGoogle(gdriveToken, gdriveFileId, newPortfolio, newRPercent, newTrades);
-        }
-
-        // 3. Firestore (Artifact cloud layer if configured)
-        if (isFirebaseConfigured && auth.currentUser) {
-          const userDocRef = doc(db, 'artifacts', appId, 'users', auth.currentUser.uid, 'settings', 'state');
-          setDoc(userDocRef, {
-            portfolioInput: newPortfolio,
-            rPercent: newRPercent,
-            trades: newTrades,
-            updatedAt: Date.now()
-          }, { merge: true }).catch(err => console.error("Firestore Sync Fail", err));
+        // 2. Google Apps Script Web App Push
+        if (gdriveWebAppUrl && gdriveSheetUrl) {
+          pushTradesToGoogleSheets(newTrades);
         }
       };
 
@@ -589,12 +476,14 @@
 
       const updateRPercentValue = (newValue) => {
         setRPercent(newValue);
+        saveLocalData(portfolioInput, newValue, trades);
         triggerSave(portfolioInput, newValue, trades);
       };
 
       const updateTradesList = (newTrades) => {
-        setTrades(newTrades);
-        triggerSave(portfolioInput, rPercent, newTrades);
+        const safeTrades = Array.isArray(newTrades) ? newTrades : [];
+        setTrades(safeTrades);
+        triggerSave(portfolioInput, rPercent, safeTrades);
       };
 
       // Parse current active numeric value of portfolio
@@ -696,11 +585,37 @@
         }
       }, [entry, slValue, slMode]);
 
+      // --- Unified Risk-to-Reward Ratio Computations & Bidirectional Conversions ---
+      const rrRatioComputed = useMemo(() => {
+        const ePrice = parseFloat(entry) || 0;
+        const val = parseFloat(rrValue) || 0;
+        const riskPerShare = slCalc.isValid ? (ePrice - slCalc.price) : 0;
+
+        if (ePrice <= 0 || riskPerShare <= 0 || val <= 0) {
+          return { ratio: 2.0, targetPrice: 0, targetPercent: 0, isValid: false };
+        }
+
+        if (rrMode === 'ratio') {
+          const targetPrice = ePrice + (riskPerShare * val);
+          const targetPercent = ((targetPrice - ePrice) / ePrice) * 100;
+          return { ratio: val, targetPrice, targetPercent, isValid: true };
+        } else if (rrMode === 'price') {
+          if (val <= ePrice) return { ratio: 0, targetPrice: val, targetPercent: 0, isValid: false };
+          const ratio = (val - ePrice) / riskPerShare;
+          const targetPercent = ((val - ePrice) / ePrice) * 100;
+          return { ratio, targetPrice: val, targetPercent, isValid: true };
+        } else { // rrMode === 'percent'
+          const targetPrice = ePrice * (1 + (val / 100));
+          const ratio = (targetPrice - ePrice) / riskPerShare;
+          return { ratio, targetPrice, targetPercent: val, isValid: true };
+        }
+      }, [entry, rrValue, rrMode, slCalc]);
+
       // Active Calculator Calculations
       const calculations = useMemo(() => {
         const ePrice = parseFloat(entry) || 0;
         
-        if (ePrice <= 0 || !slCalc.isValid || portfolio <= 0) {
+        if (ePrice <= 0 || !slCalc.isValid || !rrRatioComputed.isValid || portfolio <= 0) {
           return { isValid: false, oneR };
         }
 
@@ -710,7 +625,7 @@
         const positionSize = Math.floor(totalRiskAmount / riskPerShare);
         const positionValue = positionSize * ePrice;
         
-        const targetPrice = ePrice + (riskPerShare * rrRatio);
+        const targetPrice = rrRatioComputed.targetPrice;
         const slPercentage = slCalc.percent;
         
         const scale03Shares = Math.floor(positionSize * 0.3);
@@ -725,7 +640,7 @@
           oneR, riskPerShare, totalRiskAmount, positionSize, positionValue, targetPrice, slPercentage,
           scale03Shares, scale04Shares, scale05Shares, scale03Cap, scale04Cap, scale05Cap
         };
-      }, [portfolio, rPercent, entry, slCalc, riskR, rrRatio, oneR]);
+      }, [portfolio, rPercent, entry, slCalc, riskR, rrRatioComputed, oneR]);
 
       // Handle Toggle of Stop Loss Mode
       const handleToggleSLMode = (newMode) => {
@@ -751,6 +666,23 @@
           }
         }
         setSlMode(newMode);
+      };
+
+      // Handle R:R Mode Switch Equivalency Conversion
+      const handleToggleRRMode = (newMode) => {
+        if (newMode === rrMode) return;
+        if (rrRatioComputed.isValid) {
+          if (newMode === 'ratio') {
+            setRrValue(rrRatioComputed.ratio.toFixed(2));
+          } else if (newMode === 'price') {
+            setRrValue(rrRatioComputed.targetPrice.toFixed(2));
+          } else { // 'percent'
+            setRrValue(rrRatioComputed.targetPercent.toFixed(2));
+          }
+        } else {
+          setRrValue('');
+        }
+        setRrMode(newMode);
       };
 
       // Portfolio Wide Stats
@@ -783,13 +715,84 @@
           shares: calculations.positionSize,
           positionValue: calculations.positionValue,
           riskR: riskR,
+          rationale: rationale.trim(), // Save trading notes
         };
         updateTradesList([...trades, newTrade]);
+        setRationale(''); // Clear input notes
         setActiveTab('port');
       };
 
       const removeTrade = (id) => {
         updateTradesList(trades.filter(t => t.id !== id));
+      };
+
+      // Inline notes editor
+      const handleStartEditNote = (trade) => {
+        setEditingTradeId(trade.id);
+        setEditTradeNotes(trade.rationale || '');
+      };
+
+      const handleSaveInlineNote = (tradeId) => {
+        const updatedTrades = trades.map(t => {
+          if (t.id === tradeId) {
+            return { ...t, rationale: editTradeNotes.trim() };
+          }
+          return t;
+        });
+        updateTradesList(updatedTrades);
+        setEditingTradeId(null);
+      };
+
+      // --- Bulletproof TradingView Snapshot Render Handler ---
+      useEffect(() => {
+        if (activeTab !== 'calc' || !debouncedStockCode || !chartContainerRef.current) return;
+        
+        chartContainerRef.current.innerHTML = '';
+        const script = document.createElement('script');
+        script.src = 'https://s3.tradingview.com/tv.js';
+        script.async = true;
+        script.onload = () => {
+          if (window.TradingView) {
+            let tvSymbol = debouncedStockCode;
+            if (/^\d{4}$/.test(tvSymbol)) tvSymbol = `HKEX:${tvSymbol}`;
+            else if (['BTC', 'ETH', 'SOL', 'XRP'].includes(tvSymbol)) tvSymbol = `BINANCE:${tvSymbol}USDT`;
+
+            new window.TradingView.widget({
+              autosize: true,
+              symbol: tvSymbol,
+              interval: interval,
+              timezone: "Etc/UTC",
+              theme: theme,
+              style: "1",
+              locale: lang === 'zh' ? 'zh_TW' : 'en',
+              enable_publishing: false,
+              hide_top_toolbar: true,
+              hide_legend: false,
+              save_image: false,
+              container_id: chartContainerRef.current.id,
+            });
+          }
+        };
+        document.head.appendChild(script);
+
+        return () => {
+          if (chartContainerRef.current) chartContainerRef.current.innerHTML = '';
+        };
+      }, [debouncedStockCode, interval, theme, activeTab]);
+
+      // Safe Non-nested String Class Binding Helpers to guarantee compatibility across older browsers and iOS Safari
+      const getStopLossBtnClass = (mode) => {
+        const base = "px-[0.5em] py-[0.25em] rounded-md font-medium transition-colors cursor-pointer ";
+        return base + (slMode === mode 
+          ? "bg-white dark:bg-gray-700 text-blue-500 shadow-sm" 
+          : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300");
+      };
+
+      const getRrBtnClass = (mode) => {
+        const base = "px-[0.5em] py-[0.25em] rounded-md font-medium transition-colors cursor-pointer ";
+        return base + (rrMode === mode 
+          ? "bg-white dark:bg-gray-700 text-blue-500 shadow-sm" 
+          : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300");
       };
 
       // Styles & Proportional Scaling
@@ -800,14 +803,14 @@
       return html`
         <div style=${{ fontSize: activeFontSizeStyle }} class=${`min-h-screen pb-12 transition-all duration-300 ${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-sans`}>
           
-          <!-- Sticky Top iOS Navigation Ribbon with Integrated Segment Tabs -->
+          <!-- Top Sticky iOS Navigation Ribbon with Integrated Segment Tabs -->
           <nav class="sticky top-0 z-50 bg-[#F2F2F7]/80 dark:bg-[#000000]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-900">
             <div class="max-w-3xl mx-auto px-[1em] h-[3.75em] flex items-center justify-between relative">
               
               <!-- Left Column: Proportional Font Size Scaling Controls -->
               <div class="flex items-center z-10">
                  <div class="flex items-center bg-gray-200/50 dark:bg-gray-800/50 rounded-full px-[0.4em] py-[0.15em]">
-                    <button onClick=${decreaseFont} class="p-[0.2em] px-[0.4em] text-[0.8em] font-semibold hover:text-blue-500 disabled:opacity-30" disabled=${fontScaleIdx === 0}>A</button>
+                    <button onClick=${decreaseFont} class="p-[0.25em] px-[0.5em] text-[0.8em] font-semibold hover:text-blue-500 disabled:opacity-30" disabled=${fontScaleIdx === 0}>A</button>
                     <div class="w-px h-[0.9em] bg-gray-400/30 mx-[0.2em]"></div>
                     <button onClick=${increaseFont} class="p-[0.2em] px-[0.4em] text-[1.1em] font-semibold hover:text-blue-500 disabled:opacity-30" disabled=${fontScaleIdx === fontScaleStyles.length - 1}>A</button>
                  </div>
@@ -855,14 +858,14 @@
                 <div class="flex justify-between items-center mb-[1em] px-[0.5em] text-[0.875em] text-gray-500 dark:text-gray-400">
                   <span>${t.portfolioSize}: <strong class="text-gray-800 dark:text-gray-200">$${portfolio.toLocaleString()}</strong></span>
                   <span class="text-[0.75em] font-semibold px-[0.75em] py-[0.25em] rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
-                    ${gdriveToken ? 'Drive Sync On ✓' : isFirebaseConfigured ? t.cloudSyncing : t.localMode}
+                    ${gdriveWebAppUrl ? 'GSheets Synced ✓' : t.localMode}
                   </span>
                   <span>1R = <strong class="text-blue-500">$${oneR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong></span>
                 </div>
 
-                <!-- Entry & Risk Config -->
+                <!-- Entry & Risk Config Grid - Aligned Perfectly using vertical flex elements with bottom-baselines -->
                 <div class=${iOSCardClass}>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-[1.5em]">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-[1.5em] items-start">
                     
                     <!-- Stock Code Picker -->
                     <div class="col-span-1 md:col-span-2">
@@ -891,12 +894,15 @@
                     </div>
 
                     <!-- Entry Input -->
-                    <div>
-                      <label class="block text-[0.875em] font-semibold text-gray-500 dark:text-gray-400 mb-[0.5em] uppercase tracking-wider">${t.entryPrice}</label>
+                    <div class="flex flex-col justify-between h-full">
+                      <div class="flex justify-between items-center mb-[0.5em] h-[1.8em]">
+                        <label class="block text-[0.875em] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.entryPrice}</label>
+                      </div>
                       <div class="relative">
                         <span class="absolute left-0 top-[0.5em] text-gray-400 font-medium">$</span>
                         <input 
                           type="number" 
+                          step="any"
                           inputMode="decimal"
                           value=${entry}
                           onChange=${(e) => setEntry(e.target.value)}
@@ -907,8 +913,8 @@
                     </div>
 
                     <!-- Stop Loss Input Section with Premium Dual-Mode Selector -->
-                    <div>
-                      <div class="flex justify-between items-center mb-[0.5em]">
+                    <div class="flex flex-col justify-between h-full">
+                      <div class="flex justify-between items-center mb-[0.5em] h-[1.8em]">
                         <label class="block text-[0.875em] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.stopLoss}</label>
                         
                         <!-- Toggle Selector Button -->
@@ -916,14 +922,14 @@
                           <button 
                             type="button" 
                             onClick=${() => handleToggleSLMode('price')}
-                            class=${`px-[0.5em] py-[0.25em] rounded-md font-medium transition-colors ${slMode === 'price' ? 'bg-white dark:bg-gray-700 text-blue-500 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                            class=${getStopLossBtnClass('price')}
                           >
                             ${t.stopLossModePrice}
                           </button>
                           <button 
                             type="button" 
                             onClick=${() => handleToggleSLMode('percent')}
-                            class=${`px-[0.5em] py-[0.25em] rounded-md font-medium transition-colors ${slMode === 'percent' ? 'bg-white dark:bg-gray-700 text-blue-500 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                            class=${getStopLossBtnClass('percent')}
                           >
                             ${t.stopLossModePercent}
                           </button>
@@ -934,6 +940,7 @@
                         <span class="absolute left-0 top-[0.5em] text-gray-400 font-medium">${slMode === 'price' ? '$' : '%'}</span>
                         <input 
                           type="number" 
+                          step="any"
                           inputMode="decimal"
                           value=${slValue}
                           onChange=${(e) => setSlValue(e.target.value)}
@@ -968,7 +975,7 @@
                         <label class="block text-[0.875em] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.targetRisk}</label>
                         <div class="text-right">
                            <span class=${`font-bold text-[1.25em] ${riskR > 1.5 ? 'text-red-500' : 'text-blue-500'}`}>
-                             ${riskR.toFixed(2)} R
+                             ${formatR(riskR)} R
                            </span>
                            <div class="text-[0.75em] text-gray-400 normal-case">
                              Risk Amount: $${(oneR * riskR).toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -989,46 +996,91 @@
                         <div class="relative h-[1.25em] w-full text-[0.75em] text-gray-400 mt-[0.25em]">
                           <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.0)', transform: 'translateX(-50%)' }}>0.1R</span>
                           <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.2105)', transform: 'translateX(-50%)' }}>0.5R</span>
-                          <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.4737)', transform: 'translateX(-50%)' }}>1.0R</span>
+                          <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.4737)', transform: 'translateX(-50%)' }}>1R</span>
                           <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.7368)', transform: 'translateX(-50%)' }}>1.5R</span>
-                          <span class="absolute text-red-400 font-semibold whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 1.0)', transform: 'translateX(-50%)' }}>2.0R</span>
+                          <span class="absolute text-red-400 font-semibold whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 1.0)', transform: 'translateX(-50%)' }}>2R</span>
                         </div>
                       </div>
                     </div>
 
-                    <!-- Reward-to-Risk ratio selector -->
+                    <!-- Dynamic Risk-to-Reward Selector (Slider, Target Price, or Target %) -->
                     <div class="col-span-1 md:col-span-2 mt-[1em]">
-                      <div class="flex justify-between items-end mb-[0.5em]">
-                        <div>
-                          <label class="block text-[0.875em] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.rrRatio}</label>
-                          ${calculations.isValid && html`
-                            <div class="text-[0.75em] text-green-600 dark:text-green-400 font-medium mt-[0.125em]">
-                              Profit Per Share: +$${(calculations.riskPerShare * rrRatio).toFixed(2)} (Target Price: $${calculations.targetPrice.toFixed(2)})
-                            </div>
-                          `}
-                        </div>
-                        <span class="font-bold text-[1.125em] text-green-500">
-                          1 : ${rrRatio.toFixed(2)}
-                        </span>
-                      </div>
-                      <div class="relative pt-[0.25em]">
-                        <input 
-                          type="range" 
-                          min="1" 
-                          max="5" 
-                          step="0.5" 
-                          value=${rrRatio}
-                          onChange=${(e) => setRrRatio(parseFloat(e.target.value))}
-                          class="w-full accent-green-500"
-                        />
-                        <div class="relative h-[1.25em] w-full text-[0.75em] text-gray-400 mt-[0.25em]">
-                          <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.0)', transform: 'translateX(-50%)' }}>1:1</span>
-                          <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.25)', transform: 'translateX(-50%)' }}>1:2</span>
-                          <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.5)', transform: 'translateX(-50%)' }}>1:3</span>
-                          <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.75)', transform: 'translateX(-50%)' }}>1:4</span>
-                          <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 1.0)', transform: 'translateX(-50%)' }}>1:5</span>
+                      <div class="flex justify-between items-center mb-[0.5em]">
+                        <label class="block text-[0.875em] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.rrRatio}</label>
+                        
+                        <!-- Toggle Mode Selector for R:R Section -->
+                        <div class="flex bg-gray-200 dark:bg-gray-800 p-[0.125em] rounded-lg text-[0.75em]">
+                          <button 
+                            type="button" 
+                            onClick=${() => handleToggleRRMode('ratio')}
+                            class=${getRrBtnClass('ratio')}
+                          >
+                            ${t.rrModeRatio}
+                          </button>
+                          <button 
+                            type="button" 
+                            onClick=${() => handleToggleRRMode('price')}
+                            class=${getRrBtnClass('price')}
+                          >
+                            ${t.rrModePrice}
+                          </button>
+                          <button 
+                            type="button" 
+                            onClick=${() => handleToggleRRMode('percent')}
+                            class=${getRrBtnClass('percent')}
+                          >
+                            ${t.rrModePercent}
+                          </button>
                         </div>
                       </div>
+
+                      <!-- Conditionally render input field based on R:R Mode selection -->
+                      ${rrMode === 'ratio' ? html`
+                        <div class="relative pt-[0.25em]">
+                          <div class="flex justify-between items-center text-[0.9em] text-gray-500 mb-1">
+                            <span>Selected Implied Ratio:</span>
+                            <span class="font-bold text-green-500">1 : ${parseFloat(rrValue).toFixed(2)}</span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="1.0" 
+                            max="5.0" 
+                            step="0.5" 
+                            value=${rrValue}
+                            onChange=${(e) => setRrValue(e.target.value)}
+                            class="w-full accent-green-500"
+                          />
+                          <div class="relative h-[1.25em] w-full text-[0.75em] text-gray-400 mt-[0.25em]">
+                            <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.0)', transform: 'translateX(-50%)' }}>1.0</span>
+                            <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.25)', transform: 'translateX(-50%)' }}>2.0</span>
+                            <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.5)', transform: 'translateX(-50%)' }}>3.0</span>
+                            <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.75)', transform: 'translateX(-50%)' }}>4.0</span>
+                            <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 1.0)', transform: 'translateX(-50%)' }}>5.0</span>
+                          </div>
+                        </div>
+                      ` : html`
+                        <div class="relative">
+                          <span class="absolute left-0 top-[0.5em] text-gray-400 font-medium">${rrMode === 'price' ? '$' : '%'}</span>
+                          <input 
+                            type="number" 
+                            step="any"
+                            inputMode="decimal"
+                            value=${rrValue}
+                            onChange=${(e) => setRrValue(e.target.value)}
+                            class=${`${iOSInputClass} pl-[1.25em]`}
+                            placeholder=${rrMode === 'price' ? '180.00' : '20.00'}
+                          />
+                        </div>
+                      `}
+
+                      <!-- Inter-linked calculated counterpart metrics display -->
+                      ${rrRatioComputed.isValid && html`
+                        <div class="mt-[0.5em] text-[0.75em] text-gray-400 dark:text-gray-500 flex flex-wrap gap-x-4">
+                          ${rrMode !== 'ratio' && html`<span>Ratio: <strong class="text-gray-500 dark:text-gray-400">1 : ${rrRatioComputed.ratio.toFixed(2)}</strong></span>`}
+                          ${rrMode !== 'price' && html`<span>Price: <strong class="text-gray-500 dark:text-gray-400">$${rrRatioComputed.targetPrice.toFixed(2)}</strong></span>`}
+                          ${rrMode !== 'percent' && html`<span>Gain: <strong class="text-gray-500 dark:text-gray-400">+${rrRatioComputed.targetPercent.toFixed(2)}%</strong></span>`}
+                        </div>
+                      `}
                     </div>
                   </div>
                 </div>
@@ -1127,10 +1179,22 @@
                            </div>
                         </div>
                       </div>
+
+                      <!-- Trading Rationale Notes Entry Section -->
+                      <div class="mt-[1.5em] pt-[1.25em] border-t border-gray-100 dark:border-gray-800">
+                        <label class="block text-[0.875em] font-semibold text-gray-500 dark:text-gray-400 mb-[0.5em] uppercase tracking-wider">${t.tradingNotes}</label>
+                        <textarea 
+                          value=${rationale}
+                          onChange=${(e) => setRationale(e.target.value)}
+                          placeholder=${t.notesPlaceholder}
+                          rows="3"
+                          class="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-gray-800 px-[0.75em] py-[0.5em] rounded-xl text-[0.9em] focus:outline-none focus:border-blue-500 transition-colors"
+                        />
+                      </div>
                       
                       <button 
                         onClick=${handleAddTrade}
-                        class="w-full mt-[1em] bg-blue-500 hover:bg-blue-600 text-white font-bold py-[0.8em] rounded-xl flex items-center justify-center transition-colors shadow-sm text-[1em]"
+                        class="w-full mt-[1.25em] bg-blue-500 hover:bg-blue-600 text-white font-bold py-[0.8em] rounded-xl flex items-center justify-center transition-colors shadow-sm text-[1em]"
                       >
                         <${PlusIcon} class="mr-[0.5em]" /> ${t.addToPortfolio}
                       </button>
@@ -1282,6 +1346,7 @@
                          const hasLivePrice = livePrice !== undefined && livePrice !== null && trade.symbol !== 'UNKNOWN';
                          const tradeProfit = hasLivePrice ? (livePrice - trade.entry) * trade.shares : 0;
                          const profitPercent = hasLivePrice ? ((livePrice - trade.entry) / trade.entry) * 100 : 0;
+                         const isEditingNote = editingTradeId === trade.id;
 
                          return html`
                            <div key=${trade.id} class="p-[1.25em] flex items-center justify-between hover:bg-gray-50 dark:hover:bg-[#252528] transition-colors">
@@ -1289,7 +1354,7 @@
                                <div class="font-bold text-[1.1em] mb-[0.25em] flex flex-wrap items-center gap-[0.5em]">
                                  <span>${trade.symbol}</span>
                                  <span class="text-[0.7em] px-[0.5em] py-[0.2em] bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 rounded-md">
-                                   ${trade.shares.toLocaleString()} shares | ${trade.riskR.toFixed(2)}R
+                                   ${trade.shares.toLocaleString()} shares | ${formatR(trade.riskR)}R
                                  </span>
                                  
                                  <!-- Live return badge -->
@@ -1299,13 +1364,42 @@
                                    </span>
                                  `}
                                </div>
-                               <div class="text-[0.875em] text-gray-500 dark:text-gray-400 grid grid-cols-2 gap-x-[1.5em] gap-y-[0.1em]">
+                               <div class="text-[0.875em] text-gray-500 dark:text-gray-400 grid grid-cols-2 gap-x-[1.5em] gap-y-[0.1em] mb-[0.5em]">
                                  <span>Entry: $${trade.entry.toFixed(2)}</span>
                                  <span>SL: $${trade.stopLoss.toFixed(2)}</span>
                                  <span>Target: $${trade.target.toFixed(2)}</span>
                                  <span>Cost Basis: $${trade.positionValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                  ${hasLivePrice && html`<span class="col-span-2 text-blue-500 font-semibold">Live Quote: $${livePrice.toFixed(2)}</span>`}
                                </div>
+
+                               <!-- Editable Trading Rationale Section inside card -->
+                               <div class="mt-2 bg-gray-50 dark:bg-black/15 p-[0.75em] rounded-xl border border-gray-100 dark:border-gray-800/40 text-[0.875em]">
+                                 <div class="flex justify-between items-center mb-1 text-[0.8em] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                                   <span>${t.tradingNotes}</span>
+                                   ${isEditingNote ? html`
+                                     <button onClick=${() => handleSaveInlineNote(trade.id)} class="text-blue-500 flex items-center space-x-1 cursor-pointer">
+                                       <${SaveIcon} /> <span>${t.saveNote}</span>
+                                     </button>
+                                   ` : html`
+                                     <button onClick=${() => handleStartEditNote(trade)} class="text-gray-400 hover:text-blue-500 flex items-center space-x-1 cursor-pointer">
+                                       <${EditIcon} /> <span>${t.editNote}</span>
+                                     </button>
+                                   `}
+                                 </div>
+                                 ${isEditingNote ? html`
+                                   <textarea 
+                                     value=${editTradeNotes}
+                                     onChange=${(e) => setEditTradeNotes(e.target.value)}
+                                     rows="2"
+                                     class="w-full bg-white dark:bg-black/40 border border-gray-200 dark:border-gray-800 px-[0.5em] py-[0.35em] rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:border-blue-500"
+                                   />
+                                 ` : html`
+                                   <p class="text-gray-600 dark:text-gray-300 italic whitespace-pre-wrap">
+                                     ${trade.rationale || 'No strategy notes recorded.'}
+                                   </p>
+                                 `}
+                               </div>
+
                              </div>
                              <button 
                                onClick=${() => removeTrade(trade.id)}
@@ -1320,50 +1414,76 @@
                    `}
                 </div>
 
-                <!-- Google Drive Sync / OAuth Integration Section -->
+                <!-- Google Sheets Sync & Customizable Client ID Configuration Card -->
                 <div class=${iOSCardClass}>
-                  <div class="flex items-center space-x-[0.5em] mb-[0.75em]">
-                     <${CloudIcon} class="text-blue-500" />
-                     <h3 class="font-bold text-gray-800 dark:text-gray-200 text-[1em]">${t.googleDriveTitle}</h3>
+                  <div class="flex items-center justify-between mb-[0.75em]">
+                    <div class="flex items-center space-x-[0.5em]">
+                       <${CloudIcon} class="text-blue-500" />
+                       <h3 class="font-bold text-gray-800 dark:text-gray-200 text-[1em]">${t.googleDriveTitle}</h3>
+                    </div>
+                    <button 
+                      onClick=${() => setShowGdriveConfig(!showGdriveConfig)} 
+                      class="text-[0.875em] text-blue-500 hover:text-blue-600 font-medium focus:outline-none"
+                    >
+                      ${showGdriveConfig ? 'Hide Config' : 'Configuration Steps ⚙'}
+                    </button>
                   </div>
                   <p class="text-[0.875em] text-gray-500 dark:text-gray-400 mb-[1.25em]">${t.googleDriveDesc}</p>
                   
-                  <div class="space-y-[0.75em]">
-                    <div>
-                      <label class="block text-[0.75em] font-semibold text-gray-400 uppercase tracking-wider mb-[0.25em]">Google OAuth Client ID</label>
-                      <input 
-                        type="text" 
-                        value=${gdriveClientId}
-                        onChange=${(e) => handleSaveClientId(e.target.value)}
-                        placeholder=${t.clientIdPlaceholder}
-                        class="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-gray-800 px-[0.75em] py-[0.5em] rounded-xl text-[0.9em] focus:outline-none focus:border-blue-500 dark:focus:border-blue-400"
-                      />
+                  <!-- Collapsible settings area to cleanly configure custom domains -->
+                  ${showGdriveConfig && html`
+                    <div class="mb-4 p-4 bg-gray-50 dark:bg-black/30 rounded-xl border border-gray-100 dark:border-gray-800/50 space-y-3">
+                      <p class="text-[0.8em] text-gray-400 leading-relaxed">${t.googleInstructions}</p>
+                      
+                      <!-- Web App input -->
+                      <div>
+                        <label class="block text-[0.75em] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">${t.googleWebAppUrlLabel}</label>
+                        <input 
+                          type="text" 
+                          value=${gdriveWebAppUrl}
+                          onChange=${(e) => handleSaveWebAppUrl(e.target.value)}
+                          placeholder="https://script.google.com/macros/s/.../exec"
+                          class="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-gray-800 px-[0.75em] py-[0.5em] rounded-xl text-[0.875em] focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+
+                      <!-- Shareable Sheet link input -->
+                      <div>
+                        <label class="block text-[0.75em] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Google Sheet URL</label>
+                        <input 
+                          type="text" 
+                          value=${gdriveSheetUrl}
+                          onChange=${(e) => handleSaveSheetUrl(e.target.value)}
+                          placeholder="https://docs.google.com/spreadsheets/d/.../edit"
+                          class="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-gray-800 px-[0.75em] py-[0.5em] rounded-xl text-[0.875em] focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
                     </div>
-                    
-                    <div class="flex space-x-[0.5em]">
-                      ${!gdriveToken ? html`
-                        <button 
-                          onClick=${handleGoogleLogin}
-                          disabled=${!gdriveClientId}
-                          class="flex-1 bg-blue-500 hover:bg-blue-600 disabled:opacity-40 disabled:hover:bg-blue-500 text-white font-bold py-[0.6em] rounded-xl transition-colors text-[0.9em]"
-                        >
-                          ${t.googleLoginBtn}
-                        </button>
-                      ` : html`
-                        <button 
-                          onClick=${handleGoogleLogout}
-                          class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-[0.6em] rounded-xl transition-colors text-[0.9em]"
-                        >
-                          ${t.googleLogoutBtn}
-                        </button>
-                      `}
+                  `}
+
+                  <div class="space-y-[0.75em]">
+                    <div class="flex flex-col sm:flex-row gap-[0.5em]">
+                      <button 
+                        onClick=${pullTradesFromGoogleSheets}
+                        disabled=${!gdriveWebAppUrl || !gdriveSheetUrl}
+                        class="flex-1 bg-blue-500 hover:bg-blue-600 disabled:opacity-40 text-white font-bold py-[0.75em] rounded-xl transition-colors text-[0.95em]"
+                      >
+                        ${t.googleLoginBtn}
+                      </button>
+                      <button 
+                        onClick=${() => pushTradesToGoogleSheets()}
+                        disabled=${!gdriveWebAppUrl || !gdriveSheetUrl}
+                        class="flex-1 bg-green-500 hover:bg-green-600 disabled:opacity-40 text-white font-bold py-[0.75em] rounded-xl transition-colors text-[0.95em]"
+                      >
+                        ${t.googleLogoutBtn}
+                      </button>
                     </div>
                     
                     ${syncStatus && html`
                       <div class="text-center text-[0.825em] font-semibold mt-[0.5em]">
-                        ${syncStatus === 'syncing' && html`<span class="text-blue-500 animate-pulse">Syncing with Google Drive...</span>`}
-                        ${syncStatus === 'synced' && html`<span class="text-green-500">Google Drive Synced successfully ✓</span>`}
-                        ${syncStatus === 'error' && html`<span class="text-red-500">Syncing Error occurred ✗</span>`}
+                        ${syncStatus === 'syncing' && html`<span class="text-blue-500 animate-pulse">Syncing Google Sheets...</span>`}
+                        ${syncStatus === 'synced' && html`<span class="text-green-500">Google Sheets Synced successfully ✓</span>`}
+                        ${syncStatus === 'error' && html`<span class="text-red-500">Google Sheets Connection Error ✗ (Open settings to configure your URLs)</span>`}
                       </div>
                     `}
                   </div>

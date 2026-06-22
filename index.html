@@ -7,8 +7,6 @@
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Identity Services (GSI) for Google Drive & Sheets Authentication -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
   
   <script>
     tailwind.config = {
@@ -106,7 +104,11 @@
     // Bind htm to React's createElement
     const html = htm.bind(React.createElement);
 
-    // --- Firebase Initialization Setup ---
+    // --- Firebase Initialization Setup (Stable v10.7.1 Imports) ---
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+    import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
     let db = null;
     let auth = null;
     let appId = typeof __app_id !== 'undefined' ? __app_id : 'vcp-risk-calc';
@@ -452,8 +454,8 @@
           const res = await fetch(url);
           const data = await res.json();
           if (data && data.status === 'success') {
-            if (data.trades && Array.isArray(data.trades)) setTrades(data.trades);
-            if (data.history && Array.isArray(data.history)) setHistory(data.history);
+            if (data.trades) setTrades(data.trades);
+            if (data.history) setHistory(data.history);
             saveLocalData(portfolioInput, rPercent, data.trades || [], data.history || []);
             setSyncStatus('synced');
           } else {
@@ -639,7 +641,7 @@
         if (Math.abs(diffX) > 60) { // Swipe sensitivity threshold
           if (diffX > 0 && currentIdx < tabsOrder.length - 1) {
             setActiveTab(tabsOrder[currentIdx + 1]); // Swipe Left -> Go Right
-          } else if (diffX < 0 && currentIdx > 0) {
+          } else if (diffX > 0 && currentIdx > 0) {
             setActiveTab(tabsOrder[currentIdx - 1]); // Swipe Right -> Go Left
           }
         }
@@ -680,7 +682,7 @@
         }
       }, [entry, slValue, slMode, tradeType]);
 
-      // --- Unified Risk-to-Reward Ratio Computations ---
+      // --- Unified Risk-to-Reward Ratio Computations & Bidirectional Conversions ---
       const rrRatioComputed = useMemo(() => {
         const ePrice = parseFloat(entry) || 0;
         const val = parseFloat(rrValue) || 0;
@@ -691,8 +693,8 @@
         }
 
         if (rrMode === 'ratio') {
-          const targetPrice = tradeType === 'buy' ? ePrice + (riskPerShare * val) : ePrice - (riskPerShare * val);
-          const targetPercent = (Math.abs(targetPrice - ePrice) / ePrice) * 100;
+          const targetPrice = ePrice + (riskPerShare * val);
+          const targetPercent = ((targetPrice - ePrice) / ePrice) * 100;
           return { ratio: val, targetPrice, targetPercent, isValid: true };
         } else if (rrMode === 'price') {
           if (tradeType === 'buy' && val <= ePrice) return { ratio: 0, targetPrice: val, targetPercent: 0, isValid: false };
@@ -736,7 +738,33 @@
         };
       }, [portfolio, rPercent, entry, slCalc, riskR, rrRatioComputed, oneR, firstBetMultiplier]);
 
-      // R:R Mode Switch Equivalency Conversion
+      // Handle Toggle of Stop Loss Mode
+      const handleToggleSLMode = (newMode) => {
+        if (newMode === slMode) return;
+        const ePrice = parseFloat(entry) || 0;
+        const currentVal = parseFloat(slValue) || 0;
+
+        if (ePrice > 0 && currentVal > 0) {
+          if (newMode === 'percent') {
+            if (currentVal < ePrice) {
+              const p = (((ePrice - currentVal) / ePrice) * 100).toFixed(2);
+              setSlValue(p);
+            } else {
+              setSlValue('');
+            }
+          } else {
+            if (currentVal < 100) {
+              const pr = (ePrice * (1 - currentVal / 100)).toFixed(2);
+              setSlValue(pr);
+            } else {
+              setSlValue('');
+            }
+          }
+        }
+        setSlMode(newMode);
+      };
+
+      // Handle R:R Mode Switch Equivalency Conversion
       const handleToggleRRMode = (newMode) => {
         if (newMode === rrMode) return;
         if (rrRatioComputed.isValid) {
@@ -753,13 +781,14 @@
         setRrMode(newMode);
       };
 
-      // Portfolio and realized stats calculations
+      // Portfolio Wide Stats
       const portfolioStats = useMemo(() => {
         const totalInvested = trades.reduce((sum, trade) => sum + trade.positionValue, 0);
         const totalRiskR = trades.reduce((sum, trade) => sum + trade.riskR, 0);
         const remainingCash = portfolio - totalInvested;
         const investedPercent = portfolio > 0 ? (totalInvested / portfolio) * 100 : 0;
 
+        // Individual return accumulations
         let netProfit = 0;
         trades.forEach(trade => {
           const livePrice = livePrices[trade.symbol];
@@ -779,7 +808,6 @@
         return { totalInvested, remainingCash, totalRiskR, investedPercent, netProfit, realizedPnL };
       }, [trades, history, portfolio, livePrices]);
 
-      // Add To Active Positions
       const handleAddTrade = () => {
         if (!calculations.isValid) return;
         const newTrade = {
@@ -802,7 +830,6 @@
       // Move Active Trade to History Tab on Position Closure
       const handleClosePositionClick = (trade) => {
         setClosingTrade(trade);
-        // Default entry to exit pricing
         const currentLive = livePrices[trade.symbol];
         setExitPriceInput(currentLive ? currentLive.toFixed(2) : trade.entry.toFixed(2));
       };
@@ -832,6 +859,23 @@
 
       const removeHistoryItem = (id) => {
         updateHistoryList(history.filter(h => h.id !== id));
+      };
+
+      // Inline notes editor
+      const handleStartEditNote = (trade) => {
+        setEditingTradeId(trade.id);
+        setEditTradeNotes(trade.rationale || '');
+      };
+
+      const handleSaveInlineNote = (tradeId) => {
+        const updatedTrades = trades.map(t => {
+          if (t.id === tradeId) {
+            return { ...t, rationale: editTradeNotes.trim() };
+          }
+          return t;
+        });
+        updateTradesList(updatedTrades);
+        setEditingTradeId(null);
       };
 
       // Safe Non-nested String Class Binding Helpers
@@ -919,7 +963,7 @@
                  <div class="flex items-center bg-gray-200/50 dark:bg-gray-800/50 rounded-full px-[0.4em] py-[0.15em]">
                     <button onClick=${decreaseFont} class="p-[0.25em] px-[0.5em] text-[0.8em] font-semibold hover:text-blue-500 disabled:opacity-30" disabled=${fontScaleIdx === 0}>A</button>
                     <div class="w-px h-[0.9em] bg-gray-400/30 mx-[0.2em]"></div>
-                    <button onClick=${increaseFont} class="p-[0.25em] px-[0.4em] text-[1.1em] font-semibold hover:text-blue-500 disabled:opacity-30" disabled=${fontScaleIdx === fontScaleStyles.length - 1}>A</button>
+                    <button onClick=${increaseFont} class="p-[0.2em] px-[0.4em] text-[1.1em] font-semibold hover:text-blue-500 disabled:opacity-30" disabled=${fontScaleIdx === fontScaleStyles.length - 1}>A</button>
                  </div>
               </div>
               
@@ -928,21 +972,21 @@
                 <div class="flex bg-gray-200/50 dark:bg-[#1C1C1E] p-[0.15em] rounded-xl shadow-inner text-[0.8em] border border-gray-300/30 dark:border-gray-800">
                   <button 
                     onClick=${() => setActiveTab('calc')}
-                    class=${`px-[0.75em] sm:px-[1.25em] py-[0.35em] rounded-lg font-bold transition-all flex items-center space-x-[0.25em] ${activeTab === 'calc' ? 'bg-white dark:bg-[#2C2C2E] shadow text-blue-500' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                    class=${`px-[1.25em] sm:px-[1.75em] py-[0.35em] rounded-lg font-bold transition-all flex items-center space-x-[0.25em] ${activeTab === 'calc' ? 'bg-white dark:bg-[#2C2C2E] shadow text-blue-500' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                   >
                     <${CalculatorIcon} />
                     <span>${t.calcTab}</span>
                   </button>
                   <button 
                     onClick=${() => setActiveTab('port')}
-                    class=${`px-[0.75em] sm:px-[1.25em] py-[0.35em] rounded-lg font-bold transition-all flex items-center space-x-[0.25em] ${activeTab === 'port' ? 'bg-white dark:bg-[#2C2C2E] shadow text-blue-500' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                    class=${`px-[1.25em] sm:px-[1.75em] py-[0.35em] rounded-lg font-bold transition-all flex items-center space-x-[0.25em] ${activeTab === 'port' ? 'bg-white dark:bg-[#2C2C2E] shadow text-blue-500' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                   >
                     <${BriefcaseIcon} />
                     <span>${t.portTab}</span>
                   </button>
                   <button 
                     onClick=${() => setActiveTab('history')}
-                    class=${`px-[0.75em] sm:px-[1.25em] py-[0.35em] rounded-lg font-bold transition-all flex items-center space-x-[0.25em] ${activeTab === 'history' ? 'bg-white dark:bg-[#2C2C2E] shadow text-blue-500' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                    class=${`px-[1.25em] sm:px-[1.75em] py-[0.35em] rounded-lg font-bold transition-all flex items-center space-x-[0.25em] ${activeTab === 'history' ? 'bg-white dark:bg-[#2C2C2E] shadow text-blue-500' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                   >
                     <${HistoryIcon} />
                     <span>${t.historyTab}</span>

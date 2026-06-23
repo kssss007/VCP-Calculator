@@ -102,7 +102,7 @@
 
     const html = htm.bind(React.createElement);
 
-    // --- Localization Dictionary ---
+    // --- STREAMING_CHUNK: Initializing Translation Dictionary... ---
     const translations = {
       en: {
         title: "Trading Risk Calculator",
@@ -181,6 +181,14 @@
         cancelBtn: "Cancel",
         noHistory: "No closed trade history recorded.",
         realizedPnL: "Total Realized P&L",
+        quickGuideTitle: "Quick Guide: Generate Web App URL",
+        qgStep1: "1. Open your Google Sheet, go to Extensions > Apps Script.",
+        qgStep2: "2. Copy and paste the script below to handle the incoming data.",
+        qgStep3: "3. Click Deploy > New deployment > Select 'Web app'.",
+        qgStep4: "4. Set 'Execute as' to 'Me' and 'Who has access' to 'Anyone'.",
+        qgStep5: "5. Click Deploy, authorize access, and copy the generated URL.",
+        copyScript: "Copy Apps Script Code",
+        scriptCopied: "Copied to Clipboard!",
       },
       zh: {
         title: "交易風險管理",
@@ -259,6 +267,14 @@
         cancelBtn: "取消",
         noHistory: "目前無歷史平倉紀錄。",
         realizedPnL: "已實現總損益 (Realized P&L)",
+        quickGuideTitle: "快速指南：取得 Web App 網址",
+        qgStep1: "1. 開啟您的 Google 試算表，點選「擴充功能 > Apps Script」。",
+        qgStep2: "2. 複製並貼上以下程式碼以處理接收的資料。",
+        qgStep3: "3. 點選「部署 > 新增部署作業 > 網頁應用程式」。",
+        qgStep4: "4. 設定「執行身分」為「我」，「存取權」為「所有人」。",
+        qgStep5: "5. 點選部署，授權後複製產生的 Web App 網址並貼於上方。",
+        copyScript: "複製 Apps Script 程式碼",
+        scriptCopied: "已複製至剪貼簿！",
       }
     };
 
@@ -299,7 +315,7 @@
       return "";
     };
 
-    // SVGs
+    // --- STREAMING_CHUNK: Defining SVGs... ---
     const MoonIcon = () => html`<svg class="w-[1.2em] h-[1.2em] text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
     const SunIcon = () => html`<svg class="w-[1.2em] h-[1.2em] text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" /></svg>`;
     const GlobeIcon = () => html`<svg class="w-[1.2em] h-[1.2em] text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>`;
@@ -314,8 +330,10 @@
     const ActivityIcon = ({ className }) => html`<svg class=${`w-[0.75em] h-[0.75em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
     const CloudIcon = ({ className }) => html`<svg class=${`w-[1.25em] h-[1.25em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>`;
     const HistoryIcon = ({ className }) => html`<svg class=${`w-[1em] h-[1em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+    const CopyIcon = ({ className }) => html`<svg class=${`w-[1em] h-[1em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>`;
 
     function App() {
+      // --- STREAMING_CHUNK: Setting up state definitions... ---
       const [lang, setLang] = useState('en');
       const [theme, setTheme] = useState('light');
       const [fontScaleIdx, setFontScaleIdx] = useState(2);
@@ -333,6 +351,7 @@
       const [showGdriveConfig, setShowGdriveConfig] = useState(false);
       const [syncStatus, setSyncStatus] = useState(''); 
       const [activeModal, setActiveModal] = useState(null);
+      const [copiedSnippet, setCopiedSnippet] = useState(false);
 
       const [portfolioInput, setPortfolioInput] = useState("100,000");
       const [rPercent, setRPercent] = useState(1.0); 
@@ -371,7 +390,6 @@
       const chartContainerRef = useRef(null);
       const t = translations[lang];
 
-      // --- STREAMING_CHUNK: Setup navigation synchronization... ---
       // Auto scroll ribbon active tab into central view when overflowed
       useEffect(() => {
         if (ribbonContainerRef.current && tabButtonRefs.current[activeTab]) {
@@ -387,6 +405,7 @@
         }
       }, [activeTab]);
 
+      // --- STREAMING_CHUNK: Fetching stock price from proxies... ---
       const fetchPriceForSymbol = async (symbol) => {
         let parsedSymbol = symbol.trim().toUpperCase();
         if (!parsedSymbol) return null;
@@ -424,24 +443,42 @@
         return null;
       };
 
+      // --- STREAMING_CHUNK: Defining Google Sheets Sync logic... ---
       const syncDataToWebApp = async (actionName, record = null) => {
         if (!webAppUrl) return;
         setSyncStatus('syncing');
+
+        // Aligning data to matching Google Sheet column headers specifically as flat JSON
+        let dataToSend = {};
+        if (record) {
+           dataToSend = {
+             action: actionName,
+             id: record.id || "",
+             symbol: record.symbol || "",
+             type: record.type || "",
+             entry: record.entry || "",
+             stopLoss: record.stopLoss || "",
+             target: record.target || "",
+             shares: record.shares || "",
+             positionValue: record.positionValue || "",
+             riskR: record.riskR || "",
+             rationale: record.rationale || "",
+             exitPrice: record.exitPrice || "",
+             status: actionName === 'CLOSE_TRADE' ? "CLOSED" : "OPEN"
+           };
+        } else {
+           dataToSend = { action: actionName, timestamp: new Date().toISOString() };
+        }
+
         try {
-          const payload = {
-            action: actionName,
-            timestamp: new Date().toISOString(),
-            data: record,
-            fullState: actionName === 'FULL_SYNC' ? { trades, history } : undefined
-          };
-          
-          await fetch(webAppUrl, {
-            method: 'POST',
-            mode: 'no-cors',
+          // Strictly following the supplied structure requirement
+          const response = await fetch(webAppUrl, {
+            method: "POST",
+            redirect: "follow", 
             headers: {
-              'Content-Type': 'text/plain;charset=utf-8',
+              "Content-Type": "text/plain;charset=utf-8", 
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(dataToSend)
           });
           
           setSyncStatus('synced');
@@ -449,6 +486,7 @@
         } catch (e) {
           console.error("Sync error:", e);
           setSyncStatus('error');
+          setTimeout(() => setSyncStatus(''), 3000);
         }
       };
 
@@ -457,6 +495,19 @@
         localStorage.setItem('vcp_webapp_url', val);
       };
 
+      const handleCopyScript = () => {
+        const script = `function doPost(e) {\n  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();\n  var data = JSON.parse(e.postData.contents);\n  var row = [\n    new Date(), data.action, data.symbol, data.type, \n    data.entry, data.stopLoss, data.target, data.shares, \n    data.positionValue, data.exitPrice, data.status, data.rationale\n  ];\n  sheet.appendRow(row);\n  return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);\n}`;
+        const el = document.createElement('textarea');
+        el.value = script;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        setCopiedSnippet(true);
+        setTimeout(() => setCopiedSnippet(false), 2000);
+      };
+
+      // --- STREAMING_CHUNK: Managing local storage & calculations... ---
       useEffect(() => {
         const cached = localStorage.getItem('vcp_state') || getCookieBackup('vcp_state');
         if (cached) {
@@ -596,7 +647,7 @@
 
       const oneR = portfolio * (parseFloat(rPercent) || 1) / 100;
 
-      // --- STREAMING_CHUNK: Processing stop loss metrics... ---
+      // --- STREAMING_CHUNK: Processing stop loss & position math... ---
       const slErrorMsg = useMemo(() => {
         const ePrice = parseFloat(entry) || 0;
         const rawVal = parseFloat(slValue) || 0;
@@ -771,6 +822,7 @@
         setRationale(''); 
         setActiveTab('port');
         
+        // Push the new item correctly
         syncDataToWebApp('ADD_TRADE', newTrade);
       };
 
@@ -798,6 +850,7 @@
         setClosingTrade(null);
         setActiveTab('history');
         
+        // Push the closing data
         syncDataToWebApp('CLOSE_TRADE', closedRecord);
       };
 
@@ -1319,10 +1372,27 @@
                       <p class="text-[0.875em] text-gray-500 dark:text-gray-400 mb-[1.25em]">${t.googleDriveDesc}</p>
                       
                       ${showGdriveConfig && html`
-                        <div class="mb-4 p-4 bg-gray-50 dark:bg-black/30 rounded-xl border border-gray-100 dark:border-gray-800/50 space-y-3 no-swipe">
-                          <p class="text-[0.8em] text-gray-400 leading-relaxed">${t.googleInstructions}</p>
-                          <div>
-                            <label class="block text-[0.75em] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">${t.googleSheetLinkLabel}</label>
+                        <div class="mb-4 space-y-4 no-swipe">
+                          
+                          <!-- Quick Guide UI Section -->
+                          <div class="bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/40 p-4">
+                            <h4 class="font-bold text-blue-800 dark:text-blue-300 mb-2 flex items-center">
+                               <${InfoIcon} class="mr-1.5" /> ${t.quickGuideTitle}
+                            </h4>
+                            <ul class="text-[0.8em] text-gray-600 dark:text-gray-300 space-y-2 mb-3 list-none pl-1">
+                               <li>${t.qgStep1}</li>
+                               <li>${t.qgStep2}</li>
+                               <li>${t.qgStep3}</li>
+                               <li>${t.qgStep4}</li>
+                               <li>${t.qgStep5}</li>
+                            </ul>
+                            <button onClick=${handleCopyScript} class="w-full flex items-center justify-center bg-white dark:bg-black/50 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 py-1.5 rounded-lg text-[0.85em] font-semibold hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors">
+                              ${copiedSnippet ? html`<span class="text-green-500 font-bold">${t.scriptCopied}</span>` : html`<><${CopyIcon} class="mr-1.5" /> ${t.copyScript}</>`}
+                            </button>
+                          </div>
+
+                          <div class="p-4 bg-gray-50 dark:bg-black/30 rounded-xl border border-gray-100 dark:border-gray-800/50">
+                            <label class="block text-[0.75em] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">${t.googleSheetLinkLabel}</label>
                             <input type="text" value=${webAppUrl} onChange=${(e) => handleSaveSheetUrl(e.target.value)} placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-gray-800 px-[0.75em] py-[0.5em] rounded-xl text-[0.875em] focus:outline-none focus:border-blue-500" />
                           </div>
                         </div>

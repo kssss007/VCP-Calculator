@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Trading Risk Calculator</title>
   
   <!-- Tailwind CSS CDN -->
@@ -36,9 +36,23 @@
       margin: 0;
     }
 
-    /* Prevent scrolling on body when dragging horizontally */
-    body {
+    /* Strict container overrides for native app feel */
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overscroll-behavior-y: none;
       overscroll-behavior-x: none;
+      overflow: hidden;
+    }
+
+    /* Hide scrollbars for the ribbon and internal panes */
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Touch panning preference */
+    .swipe-container {
+      touch-action: pan-y;
     }
 
     /* iOS-like Custom Range Slider Track and Enlarge Control Point */
@@ -51,7 +65,6 @@
       width: 100%;
     }
 
-    /* Webkit (Safari, Chrome, iOS Safari) Customizations */
     input[type="range"]::-webkit-slider-runnable-track {
       background: #E5E5EA;
       height: 8px;
@@ -64,41 +77,22 @@
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 26px; /* Enlarge control point */
-      height: 26px; /* Enlarge control point */
-      border-radius: 50%;
-      background: #FFFFFF;
-      border: 0.5px solid rgba(0, 0, 0, 0.04);
-      box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.12), 0px 3px 1px rgba(0, 0, 0, 0.04);
-      margin-top: -9px; /* Align to center with track */
-      transition: transform 0.1s ease;
-    }
-    input[type="range"]:active::-webkit-slider-thumb {
-      transform: scale(1.15); /* Feedback on touch */
-    }
-
-    /* Mozilla Firefox Customizations */
-    input[type="range"]::-moz-range-track {
-      background: #E5E5EA;
-      height: 8px;
-      border-radius: 4px;
-    }
-    .dark input[type="range"]::-moz-range-track {
-      background: #3A3A3C;
-    }
-    input[type="range"]::-moz-range-thumb {
       width: 26px;
       height: 26px;
       border-radius: 50%;
       background: #FFFFFF;
       border: 0.5px solid rgba(0, 0, 0, 0.04);
       box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.12), 0px 3px 1px rgba(0, 0, 0, 0.04);
-      cursor: pointer;
+      margin-top: -9px;
+      transition: transform 0.1s ease;
+    }
+    input[type="range"]:active::-webkit-slider-thumb {
+      transform: scale(1.15);
     }
   </style>
 </head>
-<body class="bg-iosBgLight dark:bg-iosBgDark text-gray-900 dark:text-white transition-colors duration-300 overflow-x-hidden">
-  <div id="root"></div>
+<body class="bg-iosBgLight dark:bg-iosBgDark text-gray-900 dark:text-white transition-colors duration-300">
+  <div id="root" class="h-full w-full flex flex-col"></div>
 
   <!-- Load React, ReactDOM, HTM, and TradingView Snapshot Embed natively -->
   <script type="module">
@@ -106,7 +100,6 @@
     import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
     import htm from 'https://esm.sh/htm@3.1.1';
 
-    // Bind htm to React's createElement
     const html = htm.bind(React.createElement);
 
     // --- Localization Dictionary ---
@@ -118,7 +111,7 @@
         historyTab: "History",
         portfolioSize: "Total Portfolio Size",
         baseRisk: "Base Risk (1R % of Portfolio)",
-        stockCode: "Stock Code (e.g. AAPL, 0700, BTC)",
+        stockCode: "Stock Code (e.g. AAPL, BTC)",
         entryPrice: "Entry Price",
         stopLoss: "Stop Loss",
         stopLossModePrice: "Exact Price",
@@ -172,7 +165,10 @@
         slGoodShort: "Stop Loss is within 10% limit.",
         slErrorShort: "Stop Loss must be higher than entry price for Short.",
         slErrorLong: "Stop Loss must be lower than entry price for Long.",
-        optimalRiskInfo: "(1R to 2R optimal)",
+        riskTooSmall: "Too small below 1R",
+        riskOptimal: "Optimal for 1R to 2R",
+        riskTooLarge: "Too large above 2R",
+        exposureWarning: "Warning: Total exposure exceeds 100% of Portfolio!",
         remainingLabel: "Remaining bet:",
         closeTradeBtn: "Close",
         exitPriceLabel: "Enter Exit Price",
@@ -189,7 +185,7 @@
         historyTab: "歷史紀錄",
         portfolioSize: "總資金 (Portfolio Size)",
         baseRisk: "基礎風險 (1R 佔總資金 %)",
-        stockCode: "股票代號 (例: AAPL, 0700, BTC)",
+        stockCode: "股票代號 (例: AAPL, BTC)",
         entryPrice: "買入價 (Entry)",
         stopLoss: "止蝕價 (Stop Loss)",
         stopLossModePrice: "指定價格",
@@ -216,7 +212,7 @@
         slWarning: "警告：止蝕幅度大於買入價的 10%！",
         slGood: "止蝕幅度在 10% 安全範圍內。",
         invalidInput: "請輸入有效的買入價與止蝕價",
-        avgUpOnly: "規則：只在獲利時加倉 (Average up)，絕不向下攤平。",
+        avgUpOnly: "規則：只在獲利時加倉，絕不向下攤平。",
         maxRiskWarning: "已超過建議的 2R 上限！",
         chartPlaceholder: "輸入股票代號以顯示圖表",
         addToPortfolio: "加入持有投資組合",
@@ -243,7 +239,10 @@
         slGoodShort: "止蝕幅度在做空價格 10% 以內。",
         slErrorShort: "做空時，止蝕價必須高於買入價。",
         slErrorLong: "做多時，止蝕價必須低於買入價。",
-        optimalRiskInfo: "(1R 至 2R 為最佳區間)",
+        riskTooSmall: "低於 1R (風險過小)",
+        riskOptimal: "最佳區間 (1R 至 2R)",
+        riskTooLarge: "高於 2R (風險過大)",
+        exposureWarning: "警告：總持倉曝險已超過總資金 100%！",
         remainingLabel: "剩餘待加注:",
         closeTradeBtn: "平倉",
         exitPriceLabel: "請輸入平倉價格",
@@ -255,10 +254,8 @@
       }
     };
 
-    // Global body font sizes to map perfectly with relative sizes
     const fontScaleStyles = ['12px', '14px', '16px', '18px', '20px'];
 
-    // Helper functions for Thousand Separator formatting
     const formatCommas = (value) => {
       if (value === null || value === undefined || value === '') return '';
       const cleanValue = value.toString().replace(/[^0-9.]/g, '');
@@ -277,7 +274,6 @@
       return num % 1 === 0 ? num.toFixed(0) : num.toFixed(1);
     };
 
-    // Fallback to prevent Safari Data Eviction
     const setCookieBackup = (name, value, days = 365) => {
       const d = new Date();
       d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
@@ -295,7 +291,7 @@
       return "";
     };
 
-    // --- Custom SVGs ---
+    // SVGs
     const MoonIcon = () => html`<svg class="w-[1.2em] h-[1.2em] text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
     const SunIcon = () => html`<svg class="w-[1.2em] h-[1.2em] text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" /></svg>`;
     const GlobeIcon = () => html`<svg class="w-[1.2em] h-[1.2em] text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>`;
@@ -316,17 +312,19 @@
       const [theme, setTheme] = useState('light');
       const [fontScaleIdx, setFontScaleIdx] = useState(2);
       
-      // Tabs order & Swipe Configuration
       const tabsOrder = ['calc', 'port', 'history'];
       const [activeTab, setActiveTab] = useState('calc'); 
       const activeTabIndex = tabsOrder.indexOf(activeTab);
 
-      // Customizable Google Apps Script Web Sync state
+      // Refs for precise UI scrolling & layouts
+      const ribbonContainerRef = useRef(null);
+      const tabButtonRefs = useRef({});
+      const scrollPanesRefs = useRef({});
+
       const [gdriveSheetUrl, setGdriveSheetUrl] = useState(() => localStorage.getItem('vcp_gdrive_sheet_url') || '');
       const [showGdriveConfig, setShowGdriveConfig] = useState(false);
-      const [syncStatus, setSyncStatus] = useState(''); // 'synced', 'syncing', 'error', ''
+      const [syncStatus, setSyncStatus] = useState(''); 
 
-      // Portfolio & History States
       const [portfolioInput, setPortfolioInput] = useState("100,000");
       const [rPercent, setRPercent] = useState(1.0); 
       const [trades, setTrades] = useState([]); 
@@ -334,12 +332,11 @@
       const [livePrices, setLivePrices] = useState({}); 
       const [portfolioLoadingPrices, setPortfolioLoadingPrices] = useState(false);
       
-      // Calculator States
       const [stockCode, setStockCode] = useState('');
       const [debouncedStockCode, setDebouncedStockCode] = useState('');
       const [isFetchingPrice, setIsFetchingPrice] = useState(false);
       const [entry, setEntry] = useState('');
-      const [tradeType, setTradeType] = useState('buy'); // 'buy' or 'sell'
+      const [tradeType, setTradeType] = useState('buy');
       const [rationale, setRationale] = useState('');
       const [editingTradeId, setEditingTradeId] = useState(null);
       const [editTradeNotes, setEditTradeNotes] = useState('');
@@ -348,14 +345,12 @@
       const [slValue, setSlValue] = useState(''); 
 
       const [rrMode, setRrMode] = useState('ratio');
-      const [rrValue, setRrValue] = useState('2.00');
+      const [rrValue, setRrValue] = useState('2.00'); // Default to 1:2
 
-      // Update default 1st bet to 0.5R
       const [firstBetMultiplier, setFirstBetMultiplier] = useState(0.5); 
       const [riskR, setRiskR] = useState(1.0); 
       const [interval, setInterval] = useState('D');
 
-      // Smooth horizontal swipe gesture state
       const [dragOffset, setDragOffset] = useState(0);
       const [isDragging, setIsDragging] = useState(false);
       const touchStartX = useRef(0);
@@ -363,12 +358,25 @@
 
       const [closingTrade, setClosingTrade] = useState(null);
       const [exitPriceInput, setExitPriceInput] = useState('');
-      const [disclosureOpen, setDisclosureOpen] = useState({});
 
       const chartContainerRef = useRef(null);
       const t = translations[lang];
 
-      // --- Highly Resilient Dual-Proxy Stock Price Fetch Helper ---
+      // Auto scroll ribbon active tab into central view when overflowed
+      useEffect(() => {
+        if (ribbonContainerRef.current && tabButtonRefs.current[activeTab]) {
+          tabButtonRefs.current[activeTab].scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center'
+          });
+        }
+        // Native feature: Set scroll view of incoming active tab back to top
+        if (scrollPanesRefs.current[activeTab]) {
+          scrollPanesRefs.current[activeTab].scrollTop = 0;
+        }
+      }, [activeTab]);
+
       const fetchPriceForSymbol = async (symbol) => {
         let parsedSymbol = symbol.trim().toUpperCase();
         if (!parsedSymbol) return null;
@@ -406,12 +414,9 @@
         return null;
       };
 
-      // --- Google Sheets Synchronization Engine (Automated Bridge Simulation) ---
-      // Real writing requires an endpoint. This safely simulates the interaction and auto-saves locally.
       const syncTradesToGoogleSheets = async () => {
         if (!gdriveSheetUrl) return;
         setSyncStatus('syncing');
-        // Simulated network delay bridging to Google Sheets
         setTimeout(() => {
           setSyncStatus('synced');
         }, 1200);
@@ -422,14 +427,12 @@
         localStorage.setItem('vcp_gdrive_sheet_url', val);
       };
 
-      // Auto-trigger sync on portfolio actions
       useEffect(() => {
         if (trades.length > 0 || history.length > 0) {
           syncTradesToGoogleSheets();
         }
       }, [trades, history]);
 
-      // --- Hybrid Cookie & LocalStorage Load/Save fallbacks ---
       useEffect(() => {
         const cached = localStorage.getItem('vcp_state') || getCookieBackup('vcp_state');
         if (cached) {
@@ -539,7 +542,6 @@
         }
       }, [activeTab, trades]);
 
-      // --- Smooth Mobile Swipe Navigation Gestures ---
       const handleTouchStart = (e) => {
         if (e.target.closest('input[type="range"]') || e.target.closest('#tv_chart_container') || e.target.closest('.no-swipe')) {
           return;
@@ -561,16 +563,15 @@
         
         const threshold = window.innerWidth / 4; 
         if (dragOffset > threshold && activeTabIndex > 0) {
-          setActiveTab(tabsOrder[activeTabIndex - 1]); // Swipe Right -> Go Left
+          setActiveTab(tabsOrder[activeTabIndex - 1]); 
         } else if (dragOffset < -threshold && activeTabIndex < tabsOrder.length - 1) {
-          setActiveTab(tabsOrder[activeTabIndex + 1]); // Swipe Left -> Go Right
+          setActiveTab(tabsOrder[activeTabIndex + 1]); 
         }
         setDragOffset(0);
       };
 
       const oneR = portfolio * (parseFloat(rPercent) || 1) / 100;
 
-      // Stop Loss Directional Error Check
       const slErrorMsg = useMemo(() => {
         const ePrice = parseFloat(entry) || 0;
         const rawVal = parseFloat(slValue) || 0;
@@ -583,7 +584,6 @@
         return null;
       }, [entry, slValue, slMode, tradeType, t]);
 
-      // Stop Loss Calculations
       const slCalc = useMemo(() => {
         const ePrice = parseFloat(entry) || 0;
         const rawVal = parseFloat(slValue) || 0;
@@ -600,7 +600,7 @@
             const percent = ((rawVal - ePrice) / ePrice) * 100;
             return { price: rawVal, percent, isValid: true };
           }
-        } else { // percentage mode
+        } else {
           if (rawVal >= 100) return { price: 0, percent: rawVal, isValid: false };
           if (tradeType === 'buy') {
             const price = ePrice * (1 - rawVal / 100);
@@ -612,7 +612,6 @@
         }
       }, [entry, slValue, slMode, tradeType, slErrorMsg]);
 
-      // Unified Risk-to-Reward Ratio Computations
       const rrRatioComputed = useMemo(() => {
         const ePrice = parseFloat(entry) || 0;
         const val = parseFloat(rrValue) || 0;
@@ -639,7 +638,6 @@
         }
       }, [entry, rrValue, rrMode, slCalc, tradeType]);
 
-      // Active Calculator Calculations
       const calculations = useMemo(() => {
         const ePrice = parseFloat(entry) || 0;
         
@@ -797,12 +795,18 @@
         return base + (rrMode === mode ? "bg-white dark:bg-gray-700 text-blue-500 shadow-sm" : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300");
       };
 
-      const toggleDisclosure = (key) => setDisclosureOpen(prev => ({ ...prev, [key]: !prev[key] }));
-
       const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
       const toggleLang = () => setLang(prev => prev === 'en' ? 'zh' : 'en');
       const decreaseFont = () => setFontScaleIdx(prev => Math.max(0, prev - 1));
       const increaseFont = () => setFontScaleIdx(prev => Math.min(fontScaleStyles.length - 1, prev + 1));
+
+      // Dynamic Risk Target Text
+      const getRiskMessage = (r) => {
+        if (r < 1.0) return { msg: t.riskTooSmall, color: 'text-yellow-500 dark:text-yellow-400' };
+        if (r <= 2.0) return { msg: t.riskOptimal, color: 'text-green-600 dark:text-green-500' };
+        return { msg: t.riskTooLarge, color: 'text-red-500' };
+      };
+      const riskInfo = getRiskMessage(riskR);
 
       useEffect(() => {
         if (!debouncedStockCode || !chartContainerRef.current) return;
@@ -838,23 +842,23 @@
         return () => {
           if (chartContainerRef.current) chartContainerRef.current.innerHTML = '';
         };
-      }, [debouncedStockCode, interval, theme]); // Note: Removed activeTab dependency so chart persists in DOM
+      }, [debouncedStockCode, interval, theme]);
 
       const activeFontSizeStyle = fontScaleStyles[fontScaleIdx];
       const iOSInputClass = `w-full bg-transparent border-b-2 border-gray-200 dark:border-gray-800 py-2 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 transition-colors text-[1.1em]`;
-      const iOSCardClass = `bg-white dark:bg-[#1C1C1E] rounded-2xl p-[1.5em] shadow-sm mb-[1.5em] transition-colors`;
+      const iOSCardClass = `bg-white dark:bg-[#1C1C1E] rounded-2xl p-[1.5em] shadow-sm mb-[1.5em] transition-colors relative z-0`;
 
       return html`
         <div 
           style=${{ fontSize: activeFontSizeStyle }} 
-          class="min-h-screen pb-12 transition-all duration-300 text-gray-900 dark:text-white font-sans flex flex-col"
+          class="flex-1 w-full flex flex-col bg-iosBgLight dark:bg-iosBgDark text-gray-900 dark:text-white font-sans overflow-hidden"
         >
           
-          <!-- Top Sticky iOS Navigation Ribbon with centered elements -->
-          <nav class="sticky top-0 z-50 bg-[#F2F2F7]/80 dark:bg-[#000000]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-900 no-swipe">
+          <!-- Top Sticky iOS Navigation Ribbon with Responsive Centered Gradient View -->
+          <nav class="shrink-0 z-50 bg-[#F2F2F7]/80 dark:bg-[#000000]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-900 no-swipe">
             <div class="max-w-4xl mx-auto px-[1em] h-[3.75em] flex items-center justify-between w-full">
               
-              <!-- Left: Proportional Font Size Scaling Controls -->
+              <!-- Left Controls -->
               <div class="flex-1 flex justify-start items-center">
                  <div class="flex items-center bg-gray-200/50 dark:bg-gray-800/50 rounded-full px-[0.4em] py-[0.15em]">
                     <button onClick=${decreaseFont} class="p-[0.25em] px-[0.5em] text-[0.8em] font-semibold hover:text-blue-500 disabled:opacity-30" disabled=${fontScaleIdx === 0}>A</button>
@@ -863,14 +867,23 @@
                  </div>
               </div>
               
-              <!-- Center: Seamlessly Embedded Three Segment Tab Controls -->
-              <div class="flex-shrink-0 flex justify-center items-center">
-                <div class="flex bg-gray-200/50 dark:bg-[#1C1C1E] p-[0.15em] rounded-xl shadow-inner text-[0.8em] border border-gray-300/30 dark:border-gray-800">
+              <!-- Center: Dynamically Paged Ribbon -->
+              <div class="flex-shrink-0 flex justify-center items-center w-[55%] sm:w-auto relative max-w-[60vw]">
+                <!-- Edges fading effect -->
+                <div class="absolute left-0 top-0 bottom-0 w-4 sm:w-6 bg-gradient-to-r from-[#F2F2F7] dark:from-black to-transparent z-10 pointer-events-none"></div>
+                <div class="absolute right-0 top-0 bottom-0 w-4 sm:w-6 bg-gradient-to-l from-[#F2F2F7] dark:from-black to-transparent z-10 pointer-events-none"></div>
+                
+                <!-- Ribbon Container -->
+                <div 
+                  ref=${ribbonContainerRef} 
+                  class="flex bg-gray-200/50 dark:bg-[#1C1C1E] p-[0.15em] rounded-xl shadow-inner text-[0.8em] border border-gray-300/30 dark:border-gray-800 overflow-x-auto snap-x snap-mandatory hide-scrollbar relative z-0 w-full"
+                >
                   ${tabsOrder.map((tabId) => html`
                     <button 
                       key=${tabId}
+                      ref=${el => tabButtonRefs.current[tabId] = el}
                       onClick=${() => setActiveTab(tabId)}
-                      class=${`px-[1em] sm:px-[1.75em] py-[0.35em] rounded-lg font-bold transition-all flex items-center space-x-[0.25em] ${activeTab === tabId ? 'bg-white dark:bg-[#2C2C2E] shadow text-blue-500' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                      class=${`snap-center shrink-0 px-[1em] sm:px-[1.75em] py-[0.35em] rounded-lg font-bold transition-all flex items-center space-x-[0.25em] ${activeTab === tabId ? 'bg-white dark:bg-[#2C2C2E] shadow text-blue-500' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                     >
                       ${tabId === 'calc' ? html`<${CalculatorIcon} /><span>${t.calcTab}</span>` : 
                         tabId === 'port' ? html`<${BriefcaseIcon} /><span>${t.portTab}</span>` : 
@@ -880,7 +893,7 @@
                 </div>
               </div>
 
-              <!-- Right: Language Toggle & Light/Dark Theme Controls -->
+              <!-- Right Controls -->
               <div class="flex-1 flex justify-end items-center space-x-[0.25em]">
                 <button onClick=${toggleLang} class="p-[0.4em] rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition">
                   <${GlobeIcon} />
@@ -892,8 +905,8 @@
             </div>
           </nav>
 
-          <!-- Smooth Swiping Viewport Container -->
-          <main class="flex-1 w-full relative pt-[1.5em] overflow-hidden">
+          <!-- Smooth Swiping Independent Viewport Container -->
+          <main class="flex-1 w-full relative overflow-hidden swipe-container">
              <div 
                class=${`flex w-[300%] h-full ${isDragging ? '' : 'transition-transform duration-300 ease-out'}`}
                style=${{ transform: `translateX(calc(${-activeTabIndex * 33.333}% + ${dragOffset}px))` }}
@@ -901,11 +914,11 @@
                onTouchMove=${handleTouchMove}
                onTouchEnd=${handleTouchEnd}
              >
-                <!-- CALCULATOR PANEL -->
-                <div class="w-[33.333%] h-full flex-shrink-0 px-[1em]">
-                  <div class="max-w-3xl mx-auto h-full pb-[4em]">
+                
+                <!-- CALCULATOR PANE -->
+                <div class="w-[33.333%] h-full overflow-y-auto hide-scrollbar px-[1em] pt-[1.5em] pb-[4em]" ref=${el => scrollPanesRefs.current['calc'] = el}>
+                  <div class="max-w-3xl mx-auto">
                     
-                    <!-- Quick Info Ribbon -->
                     <div class="flex justify-between items-center mb-[1em] px-[0.5em] text-[0.875em] text-gray-500 dark:text-gray-400">
                       <span>${t.portfolioSize}: <strong class="text-gray-800 dark:text-gray-200">$${portfolio.toLocaleString()}</strong></span>
                       <span class="text-[0.75em] font-semibold px-[0.75em] py-[0.25em] rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
@@ -914,7 +927,6 @@
                       <span>1R = <strong class="text-blue-500">$${oneR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong></span>
                     </div>
 
-                    <!-- Entry & Risk Config Grid -->
                     <div class=${iOSCardClass}>
                       <div class="grid grid-cols-1 md:grid-cols-2 gap-[1.5em] items-end">
                         <div class="col-span-1 md:col-span-2">
@@ -922,13 +934,12 @@
                             ${t.stockCode}
                             ${isFetchingPrice && html`<span class="text-blue-400 normal-case text-[0.75em] flex items-center"><${ActivityIcon} class="mr-[0.25em] animate-pulse" /> ${t.fetchingPrice}</span>`}
                           </label>
-                          <div class="relative">
+                          <div class="relative no-swipe">
                             <input type="text" value=${stockCode} onChange=${(e) => setStockCode(e.target.value)} class=${`${iOSInputClass} font-bold uppercase`} placeholder="AAPL" autoCapitalize="characters" autoComplete="off" spellCheck="false" />
-                            <${ChartIcon} class="absolute right-[0.5em] top-[0.5em] text-gray-400" />
+                            <${ChartIcon} class="absolute right-[0.5em] top-[0.5em] text-gray-400 pointer-events-none" />
                           </div>
                         </div>
 
-                        <!-- Entry Price Row -->
                         <div class="flex flex-col justify-between h-full">
                           <div class="flex justify-between items-center mb-[0.5em] h-[1.8em]">
                             <label class="block text-[0.875em] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.entryPrice}</label>
@@ -937,13 +948,12 @@
                               <button type="button" onClick=${() => setTradeType('sell')} class=${`px-[0.5em] py-[0.25em] rounded-md font-medium transition-colors ${tradeType === 'sell' ? 'bg-red-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>${t.directionSell}</button>
                             </div>
                           </div>
-                          <div class="relative">
+                          <div class="relative no-swipe">
                             <span class="absolute left-0 top-[0.5em] text-gray-400 font-medium">$</span>
-                            <input type="number" step="any" inputMode="decimal" value=${entry} onChange=${(e) => setEntry(e.target.value)} class=${`${iOSInputClass} pl-[1.25em] no-swipe`} placeholder="150.00" />
+                            <input type="number" step="any" inputMode="decimal" value=${entry} onChange=${(e) => setEntry(e.target.value)} class=${`${iOSInputClass} pl-[1.25em]`} placeholder="150.00" />
                           </div>
                         </div>
 
-                        <!-- Stop Loss Input Section -->
                         <div class="flex flex-col justify-between h-full">
                           <div class="flex justify-between items-center mb-[0.5em] h-[1.8em]">
                             <label class="block text-[0.875em] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.stopLoss}</label>
@@ -953,9 +963,9 @@
                             </div>
                           </div>
 
-                          <div class="relative">
+                          <div class="relative no-swipe">
                             <span class="absolute left-0 top-[0.5em] text-gray-400 font-medium">${slMode === 'price' ? '$' : '%'}</span>
-                            <input type="number" step="any" inputMode="decimal" value=${slValue} onChange=${(e) => setSlValue(e.target.value)} class=${`${iOSInputClass} pl-[1.25em] no-swipe`} placeholder=${slMode === 'price' ? (tradeType === 'buy' ? '140.00' : '160.00') : '5.00'} />
+                            <input type="number" step="any" inputMode="decimal" value=${slValue} onChange=${(e) => setSlValue(e.target.value)} class=${`${iOSInputClass} pl-[1.25em]`} placeholder=${slMode === 'price' ? (tradeType === 'buy' ? '140.00' : '160.00') : '5.00'} />
                           </div>
 
                           ${slErrorMsg ? html`
@@ -969,12 +979,11 @@
                           `)}
                         </div>
 
-                        <!-- Target Risk slider -->
                         <div class="col-span-1 md:col-span-2 mt-[1em]">
                           <div class="flex justify-between items-end mb-[0.5em]">
                             <div class="flex flex-col">
                               <label class="block text-[0.875em] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.targetRisk}</label>
-                              <span class="text-[0.75em] text-blue-500 italic font-medium">${t.optimalRiskInfo}</span>
+                              <span class=${`text-[0.75em] italic font-medium transition-colors ${riskInfo.color}`}>${riskInfo.msg}</span>
                             </div>
                             <div class="text-right">
                                <span class=${`font-bold text-[1.25em] ${riskR > 2.0 ? 'text-red-500' : 'text-blue-500'}`}>${formatR(riskR)} R</span>
@@ -982,7 +991,7 @@
                             </div>
                           </div>
                           
-                          <div class="relative pt-[0.25em]">
+                          <div class="relative pt-[0.25em] no-swipe">
                             <input type="range" min="0.1" max="3.0" step="0.1" value=${riskR} onChange=${(e) => setRiskR(parseFloat(e.target.value))} class="w-full accent-blue-500" />
                             <div class="relative h-[1.25em] w-full text-[0.75em] text-gray-400 mt-[0.25em]">
                               <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.0)', transform: 'translateX(-50%)' }}>0.1R</span>
@@ -993,7 +1002,6 @@
                           </div>
                         </div>
 
-                        <!-- Risk-to-Reward Selector -->
                         <div class="col-span-1 md:col-span-2 mt-[1em]">
                           <div class="flex justify-between items-center mb-[0.5em]">
                             <label class="block text-[0.875em] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.rrRatio}</label>
@@ -1005,7 +1013,7 @@
                           </div>
 
                           ${rrMode === 'ratio' ? html`
-                            <div class="relative pt-[0.25em]">
+                            <div class="relative pt-[0.25em] no-swipe">
                               <div class="flex justify-between items-center text-[0.9em] text-gray-500 mb-1">
                                 <span>Selected Implied Ratio:</span>
                                 <span class="font-bold text-green-500">1 : ${parseFloat(rrValue).toFixed(2)}</span>
@@ -1018,9 +1026,9 @@
                               </div>
                             </div>
                           ` : html`
-                            <div class="relative">
+                            <div class="relative no-swipe">
                               <span class="absolute left-0 top-[0.5em] text-gray-400 font-medium">${rrMode === 'price' ? '$' : '%'}</span>
-                              <input type="number" step="any" inputMode="decimal" value=${rrValue} onChange=${(e) => setRrValue(e.target.value)} class=${`${iOSInputClass} pl-[1.25em] no-swipe`} placeholder=${rrMode === 'price' ? '180.00' : '20.00'} />
+                              <input type="number" step="any" inputMode="decimal" value=${rrValue} onChange=${(e) => setRrValue(e.target.value)} class=${`${iOSInputClass} pl-[1.25em]`} placeholder=${rrMode === 'price' ? '180.00' : '20.00'} />
                             </div>
                           `}
 
@@ -1035,7 +1043,6 @@
                       </div>
                     </div>
 
-                    <!-- TradingView Snapshot Iframe -->
                     <div class=${iOSCardClass + " overflow-hidden"}>
                        <div class="flex justify-between items-center mb-[1em] no-swipe">
                           <label class="block text-[0.875em] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">TradingView</label>
@@ -1051,7 +1058,6 @@
                        </div>
                     </div>
 
-                    <!-- Trade Execution Plan -->
                     <div class=${`${iOSCardClass} border-2 ${calculations.isValid ? 'border-blue-500/30' : 'border-transparent'}`}>
                       <div class="flex items-center mb-[1em]">
                         <${InfoIcon} class="text-blue-500 mr-[0.5em]" />
@@ -1078,7 +1084,6 @@
                              </div>
                           </div>
 
-                          <!-- 1st Bet Sizers -->
                           <div class="mt-[1.5em] pt-[1em] border-t border-gray-100 dark:border-gray-800">
                             <div class="flex justify-between items-center mb-[0.75em]">
                               <h3 class="font-semibold text-gray-700 dark:text-gray-200 text-[0.95em]">${t.scaleInTitle}</h3>
@@ -1117,9 +1122,9 @@
                   </div>
                 </div>
 
-                <!-- PORTFOLIO PANEL -->
-                <div class="w-[33.333%] h-full flex-shrink-0 px-[1em]">
-                  <div class="max-w-3xl mx-auto h-full pb-[4em]">
+                <!-- PORTFOLIO PANE -->
+                <div class="w-[33.333%] h-full overflow-y-auto hide-scrollbar px-[1em] pt-[1.5em] pb-[4em]" ref=${el => scrollPanesRefs.current['port'] = el}>
+                  <div class="max-w-3xl mx-auto">
                     ${trades.length > 0 && html`
                       <div class="bg-white dark:bg-[#1C1C1E] rounded-2xl p-[1.5em] shadow-sm flex items-center justify-between border-l-4 mb-[1.5em] ${portfolioStats.netProfit >= 0 ? 'border-green-500' : 'border-red-500'}">
                         <div>
@@ -1176,16 +1181,17 @@
                        <div>
                           <div class="flex justify-between text-[0.875em] mb-[0.25em]">
                             <span class="font-medium text-gray-600 dark:text-gray-400">${t.totalExposure}</span>
-                            <span class="font-bold text-gray-800 dark:text-gray-200">${portfolioStats.investedPercent.toFixed(1)}%</span>
+                            <span class=${`font-bold ${portfolioStats.investedPercent > 100 ? 'text-red-500' : 'text-gray-800 dark:text-gray-200'}`}>${portfolioStats.investedPercent.toFixed(1)}%</span>
                           </div>
                           <div class="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-[1em] overflow-hidden flex">
-                            <div class="bg-blue-500 h-full transition-all duration-500" style=${{ width: `${portfolioStats.investedPercent}%` }}></div>
+                            <div class=${`h-full transition-all duration-500 ${portfolioStats.investedPercent > 100 ? 'bg-red-500' : 'bg-blue-500'}`} style=${{ width: `${Math.min(portfolioStats.investedPercent, 100)}%` }}></div>
                             <div class="bg-gray-300 dark:bg-gray-700 h-full flex-1"></div>
                           </div>
                           <div class="flex justify-between text-[0.75em] text-gray-500 mt-[0.5em]">
                              <span>In Market: $${portfolioStats.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                              <span>Cash: $${portfolioStats.remainingCash.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                           </div>
+                          ${portfolioStats.investedPercent > 100 && html`<div class="mt-[0.5em] text-[0.75em] text-red-500 font-semibold flex items-center"><${AlertIcon} class="mr-[0.25em]" /> ${t.exposureWarning}</div>`}
                        </div>
                     </div>
 
@@ -1259,7 +1265,6 @@
                        `}
                     </div>
 
-                    <!-- Simplified Google Sheets Sync Config -->
                     <div class=${iOSCardClass}>
                       <div class="flex items-center justify-between mb-[0.75em]">
                         <div class="flex items-center space-x-[0.5em]">
@@ -1297,9 +1302,9 @@
                   </div>
                 </div>
 
-                <!-- HISTORY PANEL -->
-                <div class="w-[33.333%] h-full flex-shrink-0 px-[1em]">
-                  <div class="max-w-3xl mx-auto h-full pb-[4em]">
+                <!-- HISTORY PANE -->
+                <div class="w-[33.333%] h-full overflow-y-auto hide-scrollbar px-[1em] pt-[1.5em] pb-[4em]" ref=${el => scrollPanesRefs.current['history'] = el}>
+                  <div class="max-w-3xl mx-auto">
                     <div class="bg-white dark:bg-[#1C1C1E] rounded-2xl p-[1.5em] shadow-sm border-l-4 mb-[1.5em] ${portfolioStats.realizedPnL >= 0 ? 'border-green-500' : 'border-red-500'}">
                        <span class="block text-xs uppercase font-semibold text-gray-500 tracking-wider">${t.realizedPnL}</span>
                        <div class=${`font-bold text-[1.75em] ${portfolioStats.realizedPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>${portfolioStats.realizedPnL >= 0 ? '+' : ''}$${portfolioStats.realizedPnL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>

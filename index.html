@@ -56,12 +56,12 @@
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
     /* Custom CSS Slide animations for setting panel */
-    @keyframes slideLeft {
-      from { transform: translateX(100%); }
+    @keyframes slideRight {
+      from { transform: translateX(-100%); }
       to { transform: translateX(0); }
     }
-    .animate-slide-left {
-      animation: slideLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    .animate-slide-right {
+      animation: slideRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
     @keyframes fadeIn {
@@ -327,7 +327,8 @@ function doPost(e) {
         scriptCopied: "Script Template Copied! ✓",
         copyScript: "Copy Script Template",
         footerContact: "Contact & Feedbacks Support",
-        priceLookupError: "Live price lookups restricted. Please enter the entry price manually."
+        priceLookupError: "Live price lookups restricted. Please enter the entry price manually.",
+        manualUpdate: "Update"
       },
       zh: {
         title: "交易風險管理",
@@ -423,7 +424,8 @@ function doPost(e) {
         scriptCopied: "指令碼範本複製成功！✓",
         copyScript: "複製指令碼模版",
         footerContact: "問題回饋與聯絡支持",
-        priceLookupError: "實時報價功能受限，請手動輸入買入價。"
+        priceLookupError: "實時報價功能受限，請手動輸入買入價。",
+        manualUpdate: "手動更新"
       }
     };
 
@@ -1671,6 +1673,10 @@ function doPost(e) {
                            <h3 class="font-bold text-gray-800 dark:text-gray-200 text-[1em]">${t.activeTrades}</h3>
                            <div class="flex items-center space-x-4">
                              ${portfolioLoadingPrices && html`<span class="text-xs text-blue-500 animate-pulse flex items-center"><${ActivityIcon} class="mr-1" /> Updating quotes...</span>`}
+                             <button onClick=${pullTradesFromGoogleSheets} disabled=${!gdriveWebAppUrl} class="text-xs font-bold text-blue-500 hover:text-blue-600 disabled:opacity-30 transition-colors flex items-center space-x-1.5 cursor-pointer" title="Pull updates from Google Sheets">
+                               <${CloudIcon} class="w-3.5 h-3.5" />
+                               <span>${t.manualUpdate}</span>
+                             </button>
                              ${trades.length > 0 && html`<button onClick=${() => setConfirmClearAction('trades')} class="text-xs font-bold text-red-500 hover:text-red-600 transition-colors cursor-pointer">Clear All</button>`}
                            </div>
                          </div>
@@ -1763,6 +1769,10 @@ function doPost(e) {
                          <div class="p-4 border-b border-gray-100 dark:border-neutral-800 flex justify-between items-center">
                            <h3 class="font-bold text-base">${t.historyTab}</h3>
                            <div class="flex items-center space-x-4">
+                             <button onClick=${pullTradesFromGoogleSheets} disabled=${!gdriveWebAppUrl} class="text-xs font-bold text-blue-500 hover:text-blue-600 disabled:opacity-30 transition-colors flex items-center space-x-1.5 cursor-pointer" title="Pull updates from Google Sheets">
+                               <${CloudIcon} class="w-3.5 h-3.5" />
+                               <span>${t.manualUpdate}</span>
+                             </button>
                              ${history.length > 0 && html`<button onClick=${() => setConfirmClearAction('history')} class="text-xs font-bold text-red-500 hover:text-red-600 transition-colors cursor-pointer">Clear All</button>`}
                            </div>
                          </div>
@@ -1812,15 +1822,15 @@ function doPost(e) {
           <!-- iOS STYLE SIDE SHEET: SETTINGS MODAL -->
           ${showSettingsModal && html`
             <div 
-              class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-end animate-fade-in"
+              class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-start animate-fade-in"
               onClick=${() => setShowSettingsModal(false)}
             >
               <div 
-                class="bg-white dark:bg-[#1C1C1E] w-full max-w-lg h-full overflow-y-auto p-6 shadow-2xl flex flex-col space-y-6 animate-slide-left no-swipe"
+                class="bg-white dark:bg-[#1C1C1E] w-full max-w-lg h-full shadow-2xl flex flex-col animate-slide-right no-swipe"
                 onClick=${(e) => e.stopPropagation()}
               >
-                <!-- Header -->
-                <div class="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-neutral-800">
+                <!-- Fixed Header at the Top -->
+                <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-neutral-800 shrink-0">
                   <h3 class="font-extrabold text-xl flex items-center space-x-2">
                     <svg class="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                     <span>${t.settings}</span>
@@ -1833,188 +1843,191 @@ function doPost(e) {
                   </button>
                 </div>
 
-                <!-- 1. Theme Section -->
-                <div class="space-y-2">
-                  <h4 class="font-bold text-xs uppercase tracking-wider text-gray-400 dark:text-neutral-500">${t.theme}</h4>
-                  <div class="flex space-x-2">
-                    <button 
-                      onClick=${() => setTheme('light')}
-                      class=${`flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center space-x-2 border transition-all cursor-pointer ${theme === 'light' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400 hover:bg-gray-100'}`}
-                    >
-                      <${SunIcon} />
-                      <span>Light</span>
-                    </button>
-                    <button 
-                      onClick=${() => setTheme('dark')}
-                      class=${`flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center space-x-2 border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400 hover:bg-gray-100'}`}
-                    >
-                      <${MoonIcon} />
-                      <span>Dark</span>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- 2. Language Section -->
-                <div class="space-y-2">
-                  <h4 class="font-bold text-xs uppercase tracking-wider text-gray-400 dark:text-neutral-500">${t.language}</h4>
-                  <div class="flex space-x-2">
-                    <button 
-                      onClick=${() => setLang('en')}
-                      class=${`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${lang === 'en' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400'}`}
-                    >
-                      English
-                    </button>
-                    <button 
-                      onClick=${() => setLang('zh')}
-                      class=${`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${lang === 'zh' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400'}`}
-                    >
-                      繁體中文
-                    </button>
-                  </div>
-                </div>
-
-                <!-- 3. Font Size Adjustment -->
-                <div class="space-y-2">
-                  <h4 class="font-bold text-xs uppercase tracking-wider text-gray-400 dark:text-neutral-500">${t.fontSize}</h4>
-                  <div class="flex items-center justify-between bg-gray-50 dark:bg-neutral-800 p-2 rounded-xl">
-                    <button 
-                      onClick=${decreaseFont}
-                      disabled=${fontScaleIdx === 0}
-                      class="px-4 py-2 bg-white dark:bg-neutral-700 text-gray-700 dark:text-gray-300 font-bold rounded-lg disabled:opacity-30 transition-all text-xs cursor-pointer"
-                    >
-                      A-
-                    </button>
-                    <span class="text-sm font-bold text-blue-500">Level ${fontScaleIdx + 1}</span>
-                    <button 
-                      onClick=${increaseFont}
-                      disabled=${fontScaleIdx === fontScaleStyles.length - 1}
-                      class="px-4 py-2 bg-white dark:bg-neutral-700 text-gray-700 dark:text-gray-300 font-bold rounded-lg disabled:opacity-30 transition-all text-base cursor-pointer"
-                    >
-                      A+
-                    </button>
-                  </div>
-                </div>
-
-                <!-- --- STREAMING_CHUNK: Rendering rearranged settings accordions... --- -->
-                <!-- Unified Disclosures Section (Reordered sequence: About -> How -> Google Sheets Migration -> Sponsor -> Contact) -->
-                <div class="border-t border-gray-200 dark:border-neutral-800 pt-4 space-y-3">
-                  <h4 class="font-bold text-xs uppercase tracking-wider text-gray-400 dark:text-neutral-500">Guides & Services</h4>
-                  
-                  <!-- [1] ABOUT -->
-                  <div class="border-b border-gray-100 dark:border-neutral-800 pb-2">
-                    <button onClick=${() => toggleDisclosure('about')} class="w-full flex justify-between items-center font-bold text-[0.85em] text-gray-600 dark:text-gray-400 uppercase tracking-wider py-1 focus:outline-none cursor-pointer">
-                      <span>${t.about}</span>
-                      <span>${disclosureOpen['about'] ? '▲' : '▼'}</span>
-                    </button>
-                    ${disclosureOpen['about'] && html`
-                      <div class="mt-2 leading-relaxed text-left text-[0.8em] text-gray-500 dark:text-gray-400 animate-fade-in space-y-2">
-                        <p>Trading Risk Calculator is a premium, client-side trade assistant built specifically to enforce Volatility Contraction Pattern (VCP) risk sizing formulas and preserve capital safety.</p>
-                        <p>© ${new Date().getFullYear()} Trading Risk Calculator. All Rights Reserved.</p>
-                      </div>
-                    `}
+                <!-- Independent Scrollable Body Container -->
+                <div class="flex-1 overflow-y-auto p-6 space-y-6 hide-scrollbar">
+                  <!-- 1. Theme Section -->
+                  <div class="space-y-2">
+                    <h4 class="font-bold text-xs uppercase tracking-wider text-gray-400 dark:text-neutral-500">${t.theme}</h4>
+                    <div class="flex space-x-2">
+                      <button 
+                        onClick=${() => setTheme('light')}
+                        class=${`flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center space-x-2 border transition-all cursor-pointer ${theme === 'light' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400 hover:bg-gray-100'}`}
+                      >
+                        <${SunIcon} />
+                        <span>Light</span>
+                      </button>
+                      <button 
+                        onClick=${() => setTheme('dark')}
+                        class=${`flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center space-x-2 border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400 hover:bg-gray-100'}`}
+                      >
+                        <${MoonIcon} />
+                        <span>Dark</span>
+                      </button>
+                    </div>
                   </div>
 
-                  <!-- [2] HOW TO USE -->
-                  <div class="border-b border-gray-100 dark:border-neutral-800 pb-2">
-                    <button onClick=${() => toggleDisclosure('how')} class="w-full flex justify-between items-center font-bold text-[0.85em] text-gray-600 dark:text-gray-400 uppercase tracking-wider py-1 focus:outline-none cursor-pointer">
-                      <span>${t.howToUse}</span>
-                      <span>${disclosureOpen['how'] ? '▲' : '▼'}</span>
-                    </button>
-                    ${disclosureOpen['how'] && html`
-                      <div class="mt-2 leading-relaxed space-y-2 text-left text-[0.8em] text-gray-500 dark:text-gray-400 animate-fade-in">
-                        <p>1. Enter your <strong>Total Portfolio Size</strong> and target <strong>Base Risk (1R %)</strong> under the Portfolio settings tab.</p>
-                        <p>2. Go to the Calculator. Enter a <strong>Stock Code</strong> (like TSLA, 0005, or BTC) to auto-fetch pricing and load daily candle snapshots.</p>
-                        <p>3. Choose <strong>Buy/Sell</strong> direction, input Entry Price and customize your Stop-Loss trigger.</p>
-                        <p>4. Set Target Risk (R) slider and Profit reward boundaries. Add position setup to your active watchlist with custom strategy rationale.</p>
-                        <p>5. Close trades inside Portfolio tab once active targets are reached to record realized statistics.</p>
-                      </div>
-                    `}
+                  <!-- 2. Language Section -->
+                  <div class="space-y-2">
+                    <h4 class="font-bold text-xs uppercase tracking-wider text-gray-400 dark:text-neutral-500">${t.language}</h4>
+                    <div class="flex space-x-2">
+                      <button 
+                        onClick=${() => setLang('en')}
+                        class=${`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${lang === 'en' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400'}`}
+                      >
+                        English
+                      </button>
+                      <button 
+                        onClick=${() => setLang('zh')}
+                        class=${`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${lang === 'zh' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400'}`}
+                      >
+                        繁體中文
+                      </button>
+                    </div>
                   </div>
 
-                  <!-- [3] GOOGLE SHEETS WEB APP SYNC MIGRATION (Clean flat accordion style matching "how to use") -->
-                  <div class="border-b border-gray-100 dark:border-neutral-800 pb-2">
-                    <button onClick=${() => toggleDisclosure('gdrive')} class="w-full flex justify-between items-center font-bold text-[0.85em] text-gray-600 dark:text-gray-400 uppercase tracking-wider py-1 focus:outline-none cursor-pointer">
-                      <span class="flex items-center space-x-1.5">
-                        <${CloudIcon} class="text-blue-500 w-4 h-4" />
-                        <span>${t.googleDriveTitle}</span>
-                      </span>
-                      <span>${disclosureOpen['gdrive'] ? '▲' : '▼'}</span>
-                    </button>
-                    ${disclosureOpen['gdrive'] && html`
-                      <div class="mt-3 space-y-4 text-left text-[0.8em] animate-fade-in">
-                        <p class="text-xs text-gray-500 dark:text-neutral-400 leading-relaxed">${t.googleDriveDesc}</p>
-                        
-                        <div class="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-500 border-opacity-30 space-y-2">
-                          <div class="flex justify-between items-center">
-                            <span class="text-[0.7rem] font-bold text-blue-800 dark:text-blue-300 uppercase">1. Apps Script Template</span>
-                            <button onClick=${handleCopyScript} class="px-2 py-0.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-[0.65rem] font-bold cursor-pointer">
-                              ${copySuccess ? 'Copied!' : 'Copy'}
+                  <!-- 3. Font Size Adjustment -->
+                  <div class="space-y-2">
+                    <h4 class="font-bold text-xs uppercase tracking-wider text-gray-400 dark:text-neutral-500">${t.fontSize}</h4>
+                    <div class="flex items-center justify-between bg-gray-50 dark:bg-neutral-800 p-2 rounded-xl">
+                      <button 
+                        onClick=${decreaseFont}
+                        disabled=${fontScaleIdx === 0}
+                        class="px-4 py-2 bg-white dark:bg-neutral-700 text-gray-700 dark:text-gray-300 font-bold rounded-lg disabled:opacity-30 transition-all text-xs cursor-pointer"
+                      >
+                        A-
+                      </button>
+                      <span class="text-sm font-bold text-blue-500">Level ${fontScaleIdx + 1}</span>
+                      <button 
+                        onClick=${increaseFont}
+                        disabled=${fontScaleIdx === fontScaleStyles.length - 1}
+                        class="px-4 py-2 bg-white dark:bg-neutral-700 text-gray-700 dark:text-gray-300 font-bold rounded-lg disabled:opacity-30 transition-all text-base cursor-pointer"
+                      >
+                        A+
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- --- STREAMING_CHUNK: Rendering rearranged settings accordions... --- -->
+                  <!-- Unified Disclosures Section (Reordered sequence: About -> How -> Google Sheets Migration -> Sponsor -> Contact) -->
+                  <div class="border-t border-gray-200 dark:border-neutral-800 pt-4 space-y-3">
+                    <h4 class="font-bold text-xs uppercase tracking-wider text-gray-400 dark:text-neutral-500">Guides & Services</h4>
+                    
+                    <!-- [1] ABOUT -->
+                    <div class="border-b border-gray-100 dark:border-neutral-800 pb-2">
+                      <button onClick=${() => toggleDisclosure('about')} class="w-full flex justify-between items-center font-bold text-[0.85em] text-gray-600 dark:text-gray-400 uppercase tracking-wider py-1 focus:outline-none cursor-pointer">
+                        <span>${t.about}</span>
+                        <span>${disclosureOpen['about'] ? '▲' : '▼'}</span>
+                      </button>
+                      ${disclosureOpen['about'] && html`
+                        <div class="mt-2 leading-relaxed text-left text-[0.8em] text-gray-500 dark:text-gray-400 animate-fade-in space-y-2">
+                          <p>Trading Risk Calculator is a premium, client-side trade assistant built specifically to enforce Volatility Contraction Pattern (VCP) risk sizing formulas and preserve capital safety.</p>
+                          <p>© ${new Date().getFullYear()} Trading Risk Calculator. All Rights Reserved.</p>
+                        </div>
+                      `}
+                    </div>
+
+                    <!-- [2] HOW TO USE -->
+                    <div class="border-b border-gray-100 dark:border-neutral-800 pb-2">
+                      <button onClick=${() => toggleDisclosure('how')} class="w-full flex justify-between items-center font-bold text-[0.85em] text-gray-600 dark:text-gray-400 uppercase tracking-wider py-1 focus:outline-none cursor-pointer">
+                        <span>${t.howToUse}</span>
+                        <span>${disclosureOpen['how'] ? '▲' : '▼'}</span>
+                      </button>
+                      ${disclosureOpen['how'] && html`
+                        <div class="mt-2 leading-relaxed space-y-2 text-left text-[0.8em] text-gray-500 dark:text-gray-400 animate-fade-in">
+                          <p>1. Enter your <strong>Total Portfolio Size</strong> and target <strong>Base Risk (1R %)</strong> under the Portfolio settings tab.</p>
+                          <p>2. Go to the Calculator. Enter a <strong>Stock Code</strong> (like TSLA, 0005, or BTC) to auto-fetch pricing and load daily candle snapshots.</p>
+                          <p>3. Choose <strong>Buy/Sell</strong> direction, input Entry Price and customize your Stop-Loss trigger.</p>
+                          <p>4. Set Target Risk (R) slider and Profit reward boundaries. Add position setup to your active watchlist with custom strategy rationale.</p>
+                          <p>5. Close trades inside Portfolio tab once active targets are reached to record realized statistics.</p>
+                        </div>
+                      `}
+                    </div>
+
+                    <!-- [3] GOOGLE SHEETS WEB APP SYNC MIGRATION (Clean flat accordion style matching "how to use") -->
+                    <div class="border-b border-gray-100 dark:border-neutral-800 pb-2">
+                      <button onClick=${() => toggleDisclosure('gdrive')} class="w-full flex justify-between items-center font-bold text-[0.85em] text-gray-600 dark:text-gray-400 uppercase tracking-wider py-1 focus:outline-none cursor-pointer">
+                        <span class="flex items-center space-x-1.5">
+                          <${CloudIcon} class="text-blue-500 w-4 h-4" />
+                          <span>${t.googleDriveTitle}</span>
+                        </span>
+                        <span>${disclosureOpen['gdrive'] ? '▲' : '▼'}</span>
+                      </button>
+                      ${disclosureOpen['gdrive'] && html`
+                        <div class="mt-3 space-y-4 text-left text-[0.8em] animate-fade-in">
+                          <p class="text-xs text-gray-500 dark:text-neutral-400 leading-relaxed">${t.googleDriveDesc}</p>
+                          
+                          <div class="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-500 border-opacity-30 space-y-2">
+                            <div class="flex justify-between items-center">
+                              <span class="text-[0.7rem] font-bold text-blue-800 dark:text-blue-300 uppercase">1. Apps Script Template</span>
+                              <button onClick=${handleCopyScript} class="px-2 py-0.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-[0.65rem] font-bold cursor-pointer">
+                                ${copySuccess ? 'Copied!' : 'Copy'}
+                              </button>
+                            </div>
+                            <textarea readOnly value=${GAS_TEMPLATE} class="w-full h-32 bg-gray-900 text-green-400 font-mono text-[0.65rem] p-2 rounded-lg focus:outline-none" />
+                          </div>
+
+                          <div class="p-3 bg-gray-50 dark:bg-neutral-800 rounded-xl border border-gray-100 dark:border-neutral-800 space-y-2">
+                            <span class="text-[0.7rem] font-bold text-gray-700 dark:text-gray-300 uppercase">2. Deployment Web App URL</span>
+                            <div class="flex items-center space-x-2">
+                              <input 
+                                type="text" 
+                                value=${gdriveWebAppUrl} 
+                                onChange=${(e) => setGdriveWebAppUrl(e.target.value)} 
+                                placeholder="https://script.google.com/macros/s/.../exec" 
+                                class="w-full bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 px-3 py-1.5 rounded-xl text-xs focus:outline-none focus:border-blue-500" 
+                              />
+                              <button onClick=${handleSaveWebAppUrl} class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer">Connect</button>
+                            </div>
+                          </div>
+
+                          <div class="pt-1">
+                            <button onClick=${pullTradesFromGoogleSheets} disabled=${!gdriveWebAppUrl} class="w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl transition-colors text-sm cursor-pointer">
+                              ${t.googleLoginBtn}
                             </button>
                           </div>
-                          <textarea readOnly value=${GAS_TEMPLATE} class="w-full h-32 bg-gray-900 text-green-400 font-mono text-[0.65rem] p-2 rounded-lg focus:outline-none" />
-                        </div>
 
-                        <div class="p-3 bg-gray-50 dark:bg-neutral-800 rounded-xl border border-gray-100 dark:border-neutral-800 space-y-2">
-                          <span class="text-[0.7rem] font-bold text-gray-700 dark:text-gray-300 uppercase">2. Deployment Web App URL</span>
-                          <div class="flex items-center space-x-2">
-                            <input 
-                              type="text" 
-                              value=${gdriveWebAppUrl} 
-                              onChange=${(e) => setGdriveWebAppUrl(e.target.value)} 
-                              placeholder="https://script.google.com/macros/s/.../exec" 
-                              class="w-full bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 px-3 py-1.5 rounded-xl text-xs focus:outline-none focus:border-blue-500" 
-                            />
-                            <button onClick=${handleSaveWebAppUrl} class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer">Connect</button>
+                          ${syncStatus && html`
+                            <div class="text-center text-xs font-semibold mt-1">
+                              ${syncStatus === 'syncing' && html`<span class="text-blue-500 animate-pulse">Syncing...</span>`}
+                              ${syncStatus === 'synced' && html`<span class="text-green-500 font-bold">Connected successfully ✓</span>`}
+                              ${syncStatus === 'error' && html`<span class="text-red-500">Connection Error - Verify script URL</span>`}
+                            </div>
+                          `}
+                        </div>
+                      `}
+                    </div>
+
+                    <!-- [4] SPONSOR -->
+                    <div class="border-b border-gray-100 dark:border-neutral-800 pb-2">
+                      <button onClick=${() => toggleDisclosure('sponsor')} class="w-full flex justify-between items-center font-bold text-[0.85em] text-gray-600 dark:text-gray-400 uppercase tracking-wider py-1 focus:outline-none cursor-pointer">
+                        <span>${t.sponsor}</span>
+                        <span>${disclosureOpen['sponsor'] ? '▲' : '▼'}</span>
+                      </button>
+                      ${disclosureOpen['sponsor'] && html`
+                        <div class="mt-2 leading-relaxed text-left text-[0.8em] text-gray-500 dark:text-gray-400 animate-fade-in">
+                          <p>Enjoy using this trading application? Support developer server endpoints, updates and real-time fetch protocols by sponsoring our open source roadmap.</p>
+                          <div class="p-4 mt-4 bg-gray-50 dark:bg-neutral-800 rounded-xl border border-dashed border-gray-300 dark:border-neutral-700 text-center">
+                            <p class="italic text-gray-400">[ Payment gateways placeholder ]</p>
                           </div>
                         </div>
+                      `}
+                    </div>
 
-                        <div class="pt-1">
-                          <button onClick=${pullTradesFromGoogleSheets} disabled=${!gdriveWebAppUrl} class="w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl transition-colors text-sm cursor-pointer">
-                            ${t.googleLoginBtn}
-                          </button>
-                        </div>
-
-                        ${syncStatus && html`
-                          <div class="text-center text-xs font-semibold mt-1">
-                            ${syncStatus === 'syncing' && html`<span class="text-blue-500 animate-pulse">Syncing...</span>`}
-                            ${syncStatus === 'synced' && html`<span class="text-green-500 font-bold">Connected successfully ✓</span>`}
-                            ${syncStatus === 'error' && html`<span class="text-red-500">Connection Error - Verify script URL</span>`}
+                    <!-- [5] CONTACT -->
+                    <div class="pb-2">
+                      <button onClick=${() => toggleDisclosure('contact')} class="w-full flex justify-between items-center font-bold text-[0.85em] text-gray-600 dark:text-gray-400 uppercase tracking-wider py-1 focus:outline-none cursor-pointer">
+                        <span>${t.footerContact}</span>
+                        <span>${disclosureOpen['contact'] ? '▲' : '▼'}</span>
+                      </button>
+                      ${disclosureOpen['contact'] && html`
+                        <div class="mt-2 leading-relaxed text-left text-[0.8em] text-gray-500 dark:text-gray-400 animate-fade-in">
+                          <p>For custom API setups, private sheets bridges, and VCP workflow enquiries, please contact our support desk.</p>
+                          <div class="p-4 mt-4 bg-gray-50 dark:bg-neutral-800 rounded-xl border border-dashed border-gray-300 dark:border-neutral-700 text-center">
+                            <p class="italic text-gray-400">[ Inquiry portals placeholder ]</p>
                           </div>
-                        `}
-                      </div>
-                    `}
-                  </div>
-
-                  <!-- [4] SPONSOR -->
-                  <div class="border-b border-gray-100 dark:border-neutral-800 pb-2">
-                    <button onClick=${() => toggleDisclosure('sponsor')} class="w-full flex justify-between items-center font-bold text-[0.85em] text-gray-600 dark:text-gray-400 uppercase tracking-wider py-1 focus:outline-none cursor-pointer">
-                      <span>${t.sponsor}</span>
-                      <span>${disclosureOpen['sponsor'] ? '▲' : '▼'}</span>
-                    </button>
-                    ${disclosureOpen['sponsor'] && html`
-                      <div class="mt-2 leading-relaxed text-left text-[0.8em] text-gray-500 dark:text-gray-400 animate-fade-in">
-                        <p>Enjoy using this trading application? Support developer server endpoints, updates and real-time fetch protocols by sponsoring our open source roadmap.</p>
-                        <div class="p-4 mt-4 bg-gray-50 dark:bg-neutral-800 rounded-xl border border-dashed border-gray-300 dark:border-neutral-700 text-center">
-                          <p class="italic text-gray-400">[ Payment gateways placeholder ]</p>
                         </div>
-                      </div>
-                    `}
-                  </div>
-
-                  <!-- [5] CONTACT -->
-                  <div class="pb-2">
-                    <button onClick=${() => toggleDisclosure('contact')} class="w-full flex justify-between items-center font-bold text-[0.85em] text-gray-600 dark:text-gray-400 uppercase tracking-wider py-1 focus:outline-none cursor-pointer">
-                      <span>${t.footerContact}</span>
-                      <span>${disclosureOpen['contact'] ? '▲' : '▼'}</span>
-                    </button>
-                    ${disclosureOpen['contact'] && html`
-                      <div class="mt-2 leading-relaxed text-left text-[0.8em] text-gray-500 dark:text-gray-400 animate-fade-in">
-                        <p>For custom API setups, private sheets bridges, and VCP workflow enquiries, please contact our support desk.</p>
-                        <div class="p-4 mt-4 bg-gray-50 dark:bg-neutral-800 rounded-xl border border-dashed border-gray-300 dark:border-neutral-700 text-center">
-                          <p class="italic text-gray-400">[ Inquiry portals placeholder ]</p>
-                        </div>
-                      </div>
-                    `}
+                      `}
+                    </div>
                   </div>
                 </div>
 

@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full">
 <head>
+  <!-- Google tag (gtag.js) - GA4 基礎追蹤碼埋入於最頂部 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M0JZ7N6SBZ"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-M0JZ7N6SBZ');
+  </script>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Trading Risk Calculator</title>
@@ -230,7 +239,6 @@ function doPost(e) {
   }
 }`;
 
-    // --- STREAMING_CHUNK: Loading translations... ---
     // --- Localization Dictionary ---
     const translations = {
       en: {
@@ -429,7 +437,6 @@ function doPost(e) {
       }
     };
 
-    // --- STREAMING_CHUNK: Setting formatting tools... ---
     const fontScaleStyles = ['12px', '14px', '16px', '18px', '20px'];
 
     const formatCommas = (value) => {
@@ -476,7 +483,6 @@ function doPost(e) {
     const HelpCircleIcon = ({ className }) => html`<svg class=${`w-5 h-5 ${className}`} fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
     const GearIcon = ({ className }) => html`<svg class=${`w-5 h-5 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>`;
 
-    // --- STREAMING_CHUNK: Setting up the primary App component state managers... ---
     function App() {
       const [lang, setLang] = useState('en');
       const [theme, setTheme] = useState('light');
@@ -563,7 +569,6 @@ function doPost(e) {
       const chartContainerRef = useRef(null);
       const t = translations[lang] || translations['en'];
 
-      // --- STREAMING_CHUNK: Setting global typography scales... ---
       useEffect(() => {
         const rootSizes = ['12px', '14px', '16px', '18px', '20px'];
         document.documentElement.style.fontSize = rootSizes[fontScaleIdx];
@@ -618,7 +623,6 @@ function doPost(e) {
         localStorage.setItem('vcp_max_live_risk', num);
       };
 
-      // --- STREAMING_CHUNK: Implementing robust TradingView search and quote fetch loaders... ---
       // Resilient price fetch mechanism replacing all old Yahoo APIs with TradingView's official query system
       const fetchPriceForSymbol = async (symbol) => {
         let parsedSymbol = symbol.trim().toUpperCase();
@@ -716,7 +720,6 @@ function doPost(e) {
         return null;
       };
 
-      // --- STREAMING_CHUNK: Setting up Google Drive Sync triggers... ---
       const handleSaveWebAppUrl = () => {
         localStorage.setItem('vcp_gdrive_webapp_url', gdriveWebAppUrl);
         if (!gdriveWebAppUrl) return;
@@ -793,7 +796,6 @@ function doPost(e) {
         }
       };
 
-      // --- STREAMING_CHUNK: Managing internal state storage... ---
       useEffect(() => {
         const cached = localStorage.getItem('vcp_state');
         if (cached) {
@@ -878,7 +880,6 @@ function doPost(e) {
         loadCalcPrice();
       }, [debouncedStockCode]);
 
-      // --- STREAMING_CHUNK: Integrating the responsive TradingView Chart widget... ---
       // Handle TradingView Script Loading and Widget Rendering
       useEffect(() => {
         if (!debouncedStockCode) return;
@@ -966,7 +967,6 @@ function doPost(e) {
 
       const oneR = portfolio * (parseFloat(rPercent) || 1) / 100;
 
-      // --- STREAMING_CHUNK: Computing VCP math constraints and safety limits... ---
       const slErrorMsg = useMemo(() => {
         const ePrice = parseFloat(entry) || 0;
         const rawVal = parseFloat(slValue) || 0;
@@ -1108,7 +1108,6 @@ function doPost(e) {
         return { totalInvested, remainingCash, totalRiskR, investedPercent, netProfit, netProfitPercent, realizedPnL, realizedPnLPercent };
       }, [trades, history, portfolio, livePrices]);
 
-      // --- STREAMING_CHUNK: Managing trade operations (add/close/remove)... ---
       const handleAddTrade = () => {
         if (!calculations.isValid) return;
         const newTrade = {
@@ -1251,7 +1250,17 @@ function doPost(e) {
         </div>
       `;
 
-      // --- STREAMING_CHUNK: Rendering navigation ribbon and panels... ---
+      // Precompiled modal button style maps to completely avoid template lit parser syntax crashes
+      const themeLightClass = "flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center space-x-2 border transition-all " + 
+        (theme === 'light' ? 'bg-white text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400 hover:bg-gray-100');
+      const themeDarkClass = "flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center space-x-2 border transition-all " + 
+        (theme === 'dark' ? 'bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400 hover:bg-gray-100');
+      
+      const langEnClass = "flex-1 py-2 rounded-xl text-sm font-semibold border transition-all " + 
+        (lang === 'en' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400 hover:bg-gray-100');
+      const langZhClass = "flex-1 py-2 rounded-xl text-sm font-semibold border transition-all " + 
+        (lang === 'zh' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400 hover:bg-gray-100');
+
       return html`
         <div class="h-full w-full flex flex-col overflow-hidden bg-gray-50 dark:bg-black text-gray-900 dark:text-white transition-colors duration-300 font-sans">
           
@@ -1415,7 +1424,7 @@ function doPost(e) {
                             </div>
                           </div>
 
-                          <!-- Reward:Risk Ratio Slider -->
+                          <!-- Reward:Risk Ratio Slider (Clean marking tags & interactive Help) -->
                           <div class="col-span-1 md:col-span-2 mt-4">
                             <div class="flex justify-between items-center mb-2">
                               <div class="flex items-center space-x-2">
@@ -1496,6 +1505,7 @@ function doPost(e) {
 
                         ${!calculations.isValid ? html`
                           <div class="space-y-4">
+                            <!-- Show percentage difference even when stop loss is not configured yet -->
                             ${(parseFloat(entry) > 0 && rrRatioComputed.isValid) ? html`
                               <div class="bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-500/20 space-y-2">
                                 <div class="flex justify-between items-center text-sm">
@@ -1549,7 +1559,7 @@ function doPost(e) {
                                     <div class="text-xs text-gray-500 dark:text-neutral-500 mt-1">Capital: $${calculations.scaleFirstCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                                  </div>
                                  <div class="bg-gray-50 dark:bg-neutral-800 p-3 rounded-xl border border-gray-200 dark:border-neutral-700">
-                                    <span class="block text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">${t.remainingLabel} (${formatR(1 - firstBetMultiplier)}R)</span>
+                                    <span class="block text-xs text-gray-500 dark:text-neutral-400 uppercase tracking-wider mb-1">${t.remainingLabel} (${formatR(1 - firstBetMultiplier)}R)</span>
                                     <div class="font-bold text-lg text-gray-700 dark:text-gray-300">${calculations.scaleRemainingShares.toLocaleString()} <span class="text-xs font-normal">shares</span></div>
                                     <div class="text-xs text-gray-500 dark:text-neutral-500 mt-1">Capital: $${calculations.scaleRemainingCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                                  </div>
@@ -1570,6 +1580,7 @@ function doPost(e) {
                       </div>
                     </div>
 
+                    <!-- Scroll-linked Footer Placement -->
                     <${ScrollingCopyrightFooter} />
                   </div>
                 </div>
@@ -1730,7 +1741,7 @@ function doPost(e) {
                                        ${isEditingNote ? html`
                                          <textarea value=${editTradeNotes} onChange=${(e) => setEditTradeNotes(e.target.value)} rows="2" class="w-full bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 px-3 py-2 rounded-lg focus:outline-none" />
                                        ` : html`
-                                         <p class="text-gray-600 dark:text-neutral-400 italic whitespace-pre-wrap">${trade.rationale || 'No strategy notes recorded.'}</p>
+                                         <p class="text-gray-650 dark:text-neutral-400 italic whitespace-pre-wrap">${trade.rationale || 'No strategy notes recorded.'}</p>
                                        `}
                                      </div>
                                    </div>
@@ -1851,14 +1862,14 @@ function doPost(e) {
                     <div class="flex space-x-2">
                       <button 
                         onClick=${() => setTheme('light')}
-                        class=${`flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center space-x-2 border transition-all cursor-pointer ${theme === 'light' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400 hover:bg-gray-100'}`}
+                        class=${themeLightClass}
                       >
                         <${SunIcon} />
                         <span>Light</span>
                       </button>
                       <button 
                         onClick=${() => setTheme('dark')}
-                        class=${`flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center space-x-2 border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400 hover:bg-gray-100'}`}
+                        class=${themeDarkClass}
                       >
                         <${MoonIcon} />
                         <span>Dark</span>
@@ -1872,13 +1883,13 @@ function doPost(e) {
                     <div class="flex space-x-2">
                       <button 
                         onClick=${() => setLang('en')}
-                        class=${`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${lang === 'en' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400'}`}
+                        class=${langEnClass}
                       >
                         English
                       </button>
                       <button 
                         onClick=${() => setLang('zh')}
-                        class=${`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${lang === 'zh' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400'}`}
+                        class=${langZhClass}
                       >
                         繁體中文
                       </button>
@@ -1907,7 +1918,6 @@ function doPost(e) {
                     </div>
                   </div>
 
-                  <!-- --- STREAMING_CHUNK: Rendering rearranged settings accordions... --- -->
                   <!-- Unified Disclosures Section (Reordered sequence: About -> How -> Google Sheets Migration -> Sponsor -> Contact) -->
                   <div class="border-t border-gray-200 dark:border-neutral-800 pt-4 space-y-3">
                     <h4 class="font-bold text-xs uppercase tracking-wider text-gray-400 dark:text-neutral-500">Guides & Services</h4>

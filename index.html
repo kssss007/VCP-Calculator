@@ -1,13 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Trading Risk Calculator</title>
   
-  <!-- 生產環境靜態 CSS 引入 (不依賴任何運行時編譯) -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
   
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            iosBgLight: '#F2F2F7',
+            iosBgDark: '#000000',
+            iosCardLight: '#FFFFFF',
+            iosCardDark: '#1C1C1E',
+          }
+        }
+      }
+    }
+  </script>
+
   <style>
     /* Prevent text selection flickering on quick iOS taps */
     button, input, select, textarea {
@@ -19,91 +35,42 @@
       margin: 0;
     }
 
-    /* Native scrolling behavior */
+    /* Strict full viewport overrides */
     body, html {
       margin: 0;
       padding: 0;
-      overscroll-behavior-x: none;
+      height: 100%;
+      overscroll-behavior: none;
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Hide scrollbars for the ribbon */
+    /* momentum scrolling for iOS momentum container */
+    .tab-scroll-pane {
+      -webkit-overflow-scrolling: touch;
+      overflow-y: auto;
+      height: 100%;
+    }
+
+    /* Hide scrollbars globally but allow scrolling */
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-    /* --- 核心 CSS Variables (取代 Tailwind JIT 編譯) --- */
-    :root {
-      --bg-main: #F2F2F7;
-      --bg-card: #FFFFFF;
-      --text-main: #111827;
-      --text-muted: #6B7280;
-      --border-main: #E5E7EB;
-      --tab-bg: rgba(229, 231, 235, 0.5);
-      --tab-active: #FFFFFF;
-      --btn-hover: #F3F4F6;
-      
-      --color-blue-bg: #EFF6FF;
-      --color-blue-text: #1E40AF;
-      --color-green-bg: #ECFDF5;
-      --color-green-text: #065F46;
-      --color-red-bg: #FEF2F2;
-      --color-red-text: #991B1B;
-      --color-yellow-bg: #FEFCE8;
-      --color-yellow-text: #B45309;
-      --color-gray-bg: #F3F4F6;
-      --color-gray-text: #374151;
+    /* Custom CSS Slide animations for setting panel */
+    @keyframes slideLeft {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
+    }
+    .animate-slide-left {
+      animation: slideLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
-    .dark {
-      --bg-main: #000000;
-      --bg-card: #1C1C1E;
-      --text-main: #F9FAFB;
-      --text-muted: #9CA3AF;
-      --border-main: #2C2C2E;
-      --tab-bg: #1C1C1E;
-      --tab-active: #2C2C2E;
-      --btn-hover: #252528;
-      
-      --color-blue-bg: rgba(30, 58, 138, 0.3);
-      --color-blue-text: #93C5FD;
-      --color-green-bg: rgba(6, 95, 70, 0.3);
-      --color-green-text: #6EE7B7;
-      --color-red-bg: rgba(153, 27, 27, 0.3);
-      --color-red-text: #FCA5A5;
-      --color-yellow-bg: rgba(180, 83, 9, 0.3);
-      --color-yellow-text: #FDE047;
-      --color-gray-bg: #374151;
-      --color-gray-text: #D1D5DB;
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
     }
-
-    /* 靜態主題 Class 對映 */
-    body { background-color: var(--bg-main); color: var(--text-main); }
-    .t-bg-main { background-color: var(--bg-main); }
-    .t-bg-card { background-color: var(--bg-card); transition: background-color 0.3s; }
-    .t-text-main { color: var(--text-main); }
-    .t-text-muted { color: var(--text-muted); }
-    .t-border-main { border-color: var(--border-main); }
-    .t-tab-bg { background-color: var(--tab-bg); border: 1px solid var(--border-main); }
-    .t-tab-active { background-color: var(--tab-active); color: #3B82F6; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .t-tab-inactive { color: var(--text-muted); }
-    .t-hover-bg:hover { background-color: var(--btn-hover); }
-
-    .t-blue-badge { background-color: var(--color-blue-bg); color: var(--color-blue-text); }
-    .t-green-badge { background-color: var(--color-green-bg); color: var(--color-green-text); }
-    .t-red-badge { background-color: var(--color-red-bg); color: var(--color-red-text); }
-    .t-yellow-badge { background-color: var(--color-yellow-bg); color: var(--color-yellow-text); }
-    .t-gray-badge { background-color: var(--color-gray-bg); color: var(--color-gray-text); }
-    
-    .t-input { 
-      width: 100%; 
-      background-color: transparent; 
-      border-bottom: 2px solid var(--border-main); 
-      padding-top: 0.5rem; 
-      padding-bottom: 0.5rem; 
-      outline: none; 
-      transition: border-color 0.2s;
+    .animate-fade-in {
+      animation: fadeIn 0.2s ease-out forwards;
     }
-    .t-input:focus { border-color: #3B82F6; }
 
     /* iOS-like Custom Range Slider Track and Enlarge Control Point */
     input[type="range"] {
@@ -114,11 +81,16 @@
       height: 28px;
       width: 100%;
     }
+
     input[type="range"]::-webkit-slider-runnable-track {
-      background: var(--border-main);
+      background: #E5E5EA;
       height: 8px;
       border-radius: 4px;
     }
+    .dark input[type="range"]::-webkit-slider-runnable-track {
+      background: #3A3A3C;
+    }
+
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
@@ -136,9 +108,10 @@
     }
   </style>
 </head>
-<body class="transition-colors duration-300">
-  <div id="root" class="w-full min-h-screen flex flex-col"></div>
+<body class="bg-iosBgLight dark:bg-iosBgDark text-gray-900 dark:text-white transition-colors duration-300 h-full overflow-hidden">
+  <div id="root" class="h-full w-full flex flex-col"></div>
 
+  <!-- Load React, ReactDOM, HTM, and TradingView Snapshot Embed natively -->
   <script type="module">
     import React, { useState, useEffect, useMemo, useRef } from 'https://esm.sh/react@18.2.0';
     import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
@@ -146,6 +119,7 @@
 
     const html = htm.bind(React.createElement);
 
+    // --- Google Sheets Apps Script Setup Template (A - W aligned) ---
     const GAS_TEMPLATE = `// 1. Copy this script
 // 2. Open your Google Sheet -> Extensions -> Apps Script
 // 3. Paste and Deploy as a "Web App" (Execute as: Me, Access: Anyone)
@@ -158,6 +132,45 @@ function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify({status: "success", message: "Connected"}))
       .setMimeType(ContentService.MimeType.JSON);
   }
+  else if (payload.action === "pull") {
+    var data = sheet.getDataRange().getValues();
+    var activeTrades = [];
+    var historyTrades = [];
+    
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (!row[0]) continue;
+      
+      var trade = {
+        id: row[0].toString(),
+        symbol: row[1] || "",
+        entryDate: row[2] || "",
+        type: row[4] || "buy",
+        entry: parseFloat(row[6]) || 0,
+        stopLoss: parseFloat(row[9]) || 0,
+        target: parseFloat(row[11]) || 0,
+        riskR: parseFloat(row[13]) || 1.0,
+        shares: parseInt(row[16]) || 0,
+        positionValue: parseFloat(row[17]) || 0,
+        rationale: row[22] || ""
+      };
+      
+      var status = row[15] || "Active";
+      if (status === "Active") {
+        activeTrades.push(trade);
+      } else {
+        trade.exitPrice = parseFloat(row[7]) || 0;
+        trade.closedAt = row[3] ? new Date(row[3]).getTime() : Date.now();
+        historyTrades.push(trade);
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "success", 
+      active: activeTrades, 
+      history: historyTrades
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
   else if (payload.action === "add") {
     var row = sheet.getLastRow() + 1;
     
@@ -167,14 +180,15 @@ function doPost(e) {
     var pnlPercentFormula = '=IFERROR(T' + row + '/R' + row + ', 0)';
     var pnlRiskFormula = '=IFERROR(T' + row + '/O' + row + ', 0)';
     var returnFormula = '=IF(P' + row + '="Closed", IF(E' + row + '="buy", (H' + row + '-G' + row + ')/G' + row + ', (G' + row + '-H' + row + ')/G' + row + '), "")';
+    var statusFormula = '=IF(ISNUMBER(H' + row + '), "Closed", "Active")';
 
     var rowData = [
-      payload.tradeId,          // A - ID
+      payload.tradeId.toString(),// A - ID
       payload.symbol,           // B - symbol
       payload.entryDate,        // C - entry date
       "",                       // D - exit date
       payload.type,             // E - direction
-      "",                       // F - pattern
+      "",                       // F - pattern (for future development)
       payload.entry,            // G - Entry price
       "",                       // H - Exit price
       returnFormula,            // I - return
@@ -183,14 +197,14 @@ function doPost(e) {
       payload.target,           // L - target price
       payload.targetPercent,    // M - target percentage
       payload.rrRatio,          // N - Reward:risk
-      payload.maxRiskAmount,    // O - Max risk amount
-      "Active",                 // P - status
+      payload.maxRiskAmount,    // O - Max risk amount ($)
+      statusFormula,            // P - status
       payload.shares,           // Q - Quantity of shares
       payload.positionValue,    // R - Notional
       curPriceFormula,          // S - Current price
       pnlFormula,               // T - P&L
       pnlPercentFormula,        // U - P&L%
-      pnlRiskFormula,           // V - P&L of risk
+      pnlRiskFormula,           // V - P&L of risk (divided by max risk)
       payload.rationale         // W - comment
     ];
     
@@ -201,10 +215,12 @@ function doPost(e) {
   else if (payload.action === "close") {
     var data = sheet.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
-      if (data[i][0].toString() === payload.tradeId.toString()) {
+      var sheetId = data[i][0] ? data[i][0].toString().trim() : "";
+      var payloadId = payload.tradeId ? payload.tradeId.toString().trim() : "";
+      
+      if (sheetId === payloadId || Number(sheetId) === Number(payloadId)) {
         sheet.getRange(i + 1, 4).setValue(payload.exitDate);   // D - Exit Date
-        sheet.getRange(i + 1, 8).setValue(payload.exitPrice);  // H - Exit Price
-        sheet.getRange(i + 1, 16).setValue("Closed");          // P - Status
+        sheet.getRange(i + 1, 8).setValue(Number(payload.exitPrice));  // H - Exit Price (triggers sheet status auto-calculation)
         return ContentService.createTextOutput(JSON.stringify({status: "success"}))
           .setMimeType(ContentService.MimeType.JSON);
       }
@@ -214,6 +230,8 @@ function doPost(e) {
   }
 }`;
 
+    // --- STREAMING_CHUNK: Loading translations... ---
+    // --- Localization Dictionary ---
     const translations = {
       en: {
         title: "Trading Risk Calculator",
@@ -260,7 +278,7 @@ function doPost(e) {
         fetchingPrice: "Fetching Live Price...",
         cloudSyncing: "Auto-Syncing ✓",
         localMode: "Session Mode (Local)",
-        googleDriveTitle: "Google Sheets Web App Sync",
+        googleDriveTitle: "Google Sheets Web App Sync Migration",
         googleDriveDesc: "Provide your Google Apps Script Web App URL below. The app will automatically push new trades and status changes.",
         overallPnL: "Portfolio Net P&L",
         googleWebAppUrlLabel: "Web App URL",
@@ -274,9 +292,9 @@ function doPost(e) {
         slGoodShort: "Stop Loss is within 10% limit.",
         slErrorShort: "Stop Loss must be higher than entry price for Short.",
         slErrorLong: "Stop Loss must be lower than entry price for Long.",
-        riskTooSmall: "Too small below 1R",
+        riskTooSmall: "too small below 1R",
         riskOptimal: "Optimal for 1R to 2R",
-        riskTooLarge: "Too large above 2R",
+        riskTooLarge: "too large above 2R",
         exposureWarning: "Warning: Total exposure exceeds 100% of Portfolio!",
         remainingLabel: "Remaining bet:",
         closeTradeBtn: "Close",
@@ -286,6 +304,30 @@ function doPost(e) {
         cancelBtn: "Cancel",
         noHistory: "No closed trade history recorded.",
         realizedPnL: "Total Realized P&L",
+        settings: "Settings Menu",
+        theme: "Appearance Theme",
+        language: "Language",
+        fontSize: "Font Adjustment",
+        howToUse: "How To Use",
+        about: "About & Copyright",
+        sponsor: "Sponsor Development",
+        contactUs: "Contact Us",
+        targetRiskHelpTitle: "What is Target Risk?",
+        targetRiskHelpDesc: "Target Risk (measured in units of R) represents the amount of capital you are willing to lose on this trade. 1R corresponds to your base risk percentage of your total portfolio. Sizing between 1R and 2R is optimal for proven Volatility Contraction Pattern (VCP) breakout setups.",
+        rrHelpTitle: "What is Risk-to-Reward (R:R)?",
+        rrHelpDesc: "The Risk-to-Reward Ratio measures the prospective return of a trade relative to its maximum downside. A ratio of 1:2 means you aim to capture two dollars of profit for every one dollar you risk. Maintaining an asymmetric R:R (minimum 1:2) ensures long-term portfolio profitability even with a 40-50% win rate.",
+        maxTargetRiskLabel: "Set Max Target Risk (R)",
+        googleLoginBtn: "Pull trades from Google Sheet",
+        quickGuideTitle: "Quick Sync Setup Instructions",
+        qgStep1: "1. Click the 'Copy Script Template' button below to copy the custom Apps Script code.",
+        qgStep2: "2. Open your Google Sheet, choose Extensions -> Apps Script, and paste the code.",
+        qgStep3: "3. Deploy the script as a Web App (Execute as: Me, Access: Anyone).",
+        qgStep4: "4. Paste your resulting Deployment Web App URL in the field below.",
+        qgStep5: "5. Click 'Connect' to finalize the link, or pull trades dynamically from the Cloud.",
+        scriptCopied: "Script Template Copied! ✓",
+        copyScript: "Copy Script Template",
+        footerContact: "Contact & Feedbacks Support",
+        priceLookupError: "Live price lookups restricted. Please enter the entry price manually."
       },
       zh: {
         title: "交易風險管理",
@@ -328,13 +370,12 @@ function doPost(e) {
         activeTrades: "持有倉位列表",
         noTrades: "目前無持倉位置。",
         totalExposure: "總持倉曝險 (Exposure)",
-        riskThermometer: "實時風險溫度計 (上限 10R)",
+        riskThermometer: "實時風險溫度計",
         fetchingPrice: "獲取最新報價...",
         cloudSyncing: "雲端自動同步 ✓",
         localMode: "單次會話模式",
-        googleDriveTitle: "Google 試算表備份同步",
-        googleDriveDesc: "請提供空白的 Google 試算表網址，應用程式將在倉位發生變動時自動雙向同步您的資料。",
-        googleLoginBtn: "手動載入資料",
+        googleDriveTitle: "Google 試算表備份同步 (系統遷移)",
+        googleDriveDesc: "請提供您的 Google Apps Script 網頁應用程式網址，將自動同步與備份所有交易紀錄。",
         overallPnL: "持倉浮動淨損益",
         googleWebAppUrlLabel: "網頁應用程式 URL",
         tradingNotes: "交易心得與邏輯",
@@ -359,9 +400,34 @@ function doPost(e) {
         cancelBtn: "取消",
         noHistory: "目前無歷史平倉紀錄。",
         realizedPnL: "已實現總損益 (Realized P&L)",
+        settings: "設定選單",
+        theme: "主視覺外觀",
+        language: "介面語言",
+        fontSize: "調整字型大小",
+        howToUse: "如何使用此 App",
+        about: "關於與版權宣告",
+        sponsor: "贊助開發者",
+        contactUs: "聯絡我們",
+        targetRiskHelpTitle: "什麼是目標風險 (Target Risk)？",
+        targetRiskHelpDesc: "目標風險（以 R 為單位）代表您在單筆交易中願意承擔的最大虧損額。1R 對應於您的總資金的基礎風險百分比。對於成熟的波動收縮形態（VCP）突破，1R 到 2R 之間的倉位大小是最理想的。",
+        rrHelpTitle: "什麼是風險回報比 (R:R)？",
+        rrHelpDesc: "風險回報比衡量了一筆交易預期的獲利與最大潛在虧損之間的比率。1:2 的比率意味著您每承擔 1 元的風險，就期望賺取 2 元的利潤。保持非對稱性的風險回報比（至少 1:2）能確保您的帳戶即便在勝率只有 40-50% 的情況下，仍能實現長期盈利。",
+        maxTargetRiskLabel: "設定最大目標風險 (Max R)",
+        googleLoginBtn: "自 Google 試算表同步拉取資料",
+        quickGuideTitle: "雲端快速同步教學指南",
+        qgStep1: "1. 點擊下方「複製指令碼模版」複製 Google Apps Script 程式碼。",
+        qgStep2: "2. 開啟您的 Google 試算表，進入「擴充功能」->「Apps Script」貼上代碼。",
+        qgStep3: "3. 部署為「網頁應用程式」(執行者：我，授權範圍：任何人)。",
+        qgStep4: "4. 將產生的 Web App URL 網址貼入下方的對應欄位中。",
+        qgStep5: "5. 點擊「連線」啟用連結，即可使用「同步拉取」讀取或更新紀錄。",
+        scriptCopied: "指令碼範本複製成功！✓",
+        copyScript: "複製指令碼模版",
+        footerContact: "問題回饋與聯絡支持",
+        priceLookupError: "實時報價功能受限，請手動輸入買入價。"
       }
     };
 
+    // --- STREAMING_CHUNK: Setting formatting tools... ---
     const fontScaleStyles = ['12px', '14px', '16px', '18px', '20px'];
 
     const formatCommas = (value) => {
@@ -386,23 +452,29 @@ function doPost(e) {
       return Number.isInteger(num) ? num.toString() : num.toFixed(2);
     };
 
-    // SVGs
+    // SVGs & Icons
     const MoonIcon = () => html`<svg class="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
     const SunIcon = () => html`<svg class="w-5 h-5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" /></svg>`;
     const GlobeIcon = () => html`<svg class="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>`;
     const InfoIcon = ({ className }) => html`<svg class=${`w-5 h-5 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
     const AlertIcon = ({ className }) => html`<svg class=${`w-5 h-5 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`;
     const TrendingIcon = ({ className }) => html`<svg class=${`w-6 h-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
-    const ChartIcon = ({ className }) => html`<svg class=${`w-5 h-5 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>`;
-    const BriefcaseIcon = ({ className }) => html`<svg class=${`w-4 h-4 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>`;
-    const CalculatorIcon = ({ className }) => html`<svg class=${`w-4 h-4 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 11h.01M12 7h.01M9 11h.01M15 11h.01M15 7h.01M5 19V5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2z" /></svg>`;
-    const PlusIcon = ({ className }) => html`<svg class=${`w-5 h-5 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>`;
-    const TrashIcon = ({ className }) => html`<svg class=${`w-5 h-5 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>`;
-    const ActivityIcon = ({ className }) => html`<svg class=${`w-3 h-3 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
-    const CloudIcon = ({ className }) => html`<svg class=${`w-5 h-5 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>`;
-    const HistoryIcon = ({ className }) => html`<svg class=${`w-4 h-4 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+    const ChartIcon = ({ className }) => html`<svg class=${`w-[1.25em] h-[1.25em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>`;
+    const BriefcaseIcon = ({ className }) => html`<svg class=${`w-[1em] h-[1em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>`;
+    const CalculatorIcon = ({ className }) => html`<svg class=${`w-[1em] h-[1em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 11h.01M12 7h.01M9 11h.01M15 11h.01M15 7h.01M5 19V5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2z" /></svg>`;
+    const PlusIcon = ({ className }) => html`<svg class=${`w-[1.25em] h-[1.25em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>`;
+    const TrashIcon = ({ className }) => html`<svg class=${`w-[1.25em] h-[1.25em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>`;
+    const ActivityIcon = ({ className }) => html`<svg class=${`w-[0.75em] h-[0.75em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
+    const CloudIcon = ({ className }) => html`<svg class=${`w-[1.25em] h-[1.25em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>`;
+    const HistoryIcon = ({ className }) => html`<svg class=${`w-[1em] h-[1em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+    const CopyIcon = ({ className }) => html`<svg class=${`w-[1em] h-[1em] ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>`;
+    
+    // Custom SVGs replacing Lucide ones dynamically
+    const ThreeDotsIcon = () => html`<svg class="w-6 h-6 text-gray-700 dark:text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`;
+    const HelpCircleIcon = ({ className }) => html`<svg class=${`w-5 h-5 ${className}`} fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
     const GearIcon = ({ className }) => html`<svg class=${`w-5 h-5 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>`;
 
+    // --- STREAMING_CHUNK: Setting up the primary App component state managers... ---
     function App() {
       const [lang, setLang] = useState('en');
       const [theme, setTheme] = useState('light');
@@ -416,16 +488,17 @@ function doPost(e) {
 
       const ribbonContainerRef = useRef(null);
       const tabButtonRefs = useRef({});
+      const scrollPanesRefs = useRef({});
 
-      // Google Web App Integration
+      // Google Web App Integration (Now safely in settings)
       const [gdriveWebAppUrl, setGdriveWebAppUrl] = useState(() => localStorage.getItem('vcp_gdrive_webapp_url') || '');
-      const [showGdriveConfig, setShowGdriveConfig] = useState(false);
       const [syncStatus, setSyncStatus] = useState(''); 
       const [copySuccess, setCopySuccess] = useState(false);
 
       // Configurations
       const [maxTargetRisk, setMaxTargetRisk] = useState(() => parseFloat(localStorage.getItem('vcp_max_target_risk')) || 3.0);
-      const [showTargetRiskSettings, setShowTargetRiskSettings] = useState(false);
+      const [showTargetRiskHelp, setShowTargetRiskHelp] = useState(false);
+      const [showRRHelp, setShowRRHelp] = useState(false);
       
       const [maxLiveRisk, setMaxLiveRisk] = useState(() => parseFloat(localStorage.getItem('vcp_max_live_risk')) || 10.0);
       const [showLiveRiskSettings, setShowLiveRiskSettings] = useState(false);
@@ -440,6 +513,7 @@ function doPost(e) {
       const [stockCode, setStockCode] = useState('');
       const [debouncedStockCode, setDebouncedStockCode] = useState('');
       const [isFetchingPrice, setIsFetchingPrice] = useState(false);
+      const [priceFetchFailed, setPriceFetchFailed] = useState(false);
       const [entry, setEntry] = useState('');
       const [tradeType, setTradeType] = useState('buy');
       const [rationale, setRationale] = useState('');
@@ -464,11 +538,46 @@ function doPost(e) {
       const [closingTrade, setClosingTrade] = useState(null);
       const [exitPriceInput, setExitPriceInput] = useState('');
 
-      const [activeModal, setActiveModal] = useState(null);
-      const [confirmClearAction, setConfirmClearAction] = useState(null); // 'trades' | 'history' | null
+      // Unified settings page sheets
+      const [showSettingsModal, setShowSettingsModal] = useState(false);
+      const [confirmClearAction, setConfirmClearAction] = useState(null); 
+
+      // Settings disclosures accordion state (Collapsibles in settings panel)
+      const [disclosureOpen, setDisclosureOpen] = useState({
+        gdrive: false,
+        how: false,
+        about: false,
+        sponsor: false,
+        contact: false
+      });
+
+      const toggleDisclosure = (key) => {
+        setDisclosureOpen(prev => ({
+          ...prev,
+          [key]: !prev[key]
+        }));
+      };
 
       const chartContainerRef = useRef(null);
       const t = translations[lang] || translations['en'];
+
+      // --- STREAMING_CHUNK: Setting global typography scales... ---
+      useEffect(() => {
+        const rootSizes = ['12px', '14px', '16px', '18px', '20px'];
+        document.documentElement.style.fontSize = rootSizes[fontScaleIdx];
+      }, [fontScaleIdx]);
+
+      const increaseFont = () => {
+        if (fontScaleIdx < fontScaleStyles.length - 1) {
+          setFontScaleIdx(prev => prev + 1);
+        }
+      };
+
+      const decreaseFont = () => {
+        if (fontScaleIdx > 0) {
+          setFontScaleIdx(prev => prev - 1);
+        }
+      };
 
       useEffect(() => {
         const timeout = setTimeout(() => {
@@ -477,6 +586,7 @@ function doPost(e) {
         return () => clearTimeout(timeout);
       }, [activeTab]);
 
+      // Automatically reset panel scroll container back to top upon switching
       useEffect(() => {
         if (ribbonContainerRef.current && tabButtonRefs.current[activeTab]) {
           tabButtonRefs.current[activeTab].scrollIntoView({
@@ -485,6 +595,12 @@ function doPost(e) {
             inline: 'center'
           });
         }
+        
+        tabsOrder.forEach(tabId => {
+          if (scrollPanesRefs.current[tabId]) {
+            scrollPanesRefs.current[tabId].scrollTop = 0;
+          }
+        });
       }, [activeTab]);
 
       const handleSaveMaxTargetRisk = (val) => {
@@ -500,39 +616,105 @@ function doPost(e) {
         localStorage.setItem('vcp_max_live_risk', num);
       };
 
+      // --- STREAMING_CHUNK: Implementing robust TradingView search and quote fetch loaders... ---
+      // Resilient price fetch mechanism replacing all old Yahoo APIs with TradingView's official query system
       const fetchPriceForSymbol = async (symbol) => {
         let parsedSymbol = symbol.trim().toUpperCase();
         if (!parsedSymbol) return null;
-        let yahooSymbol = parsedSymbol;
-        if (/^\d{4}$/.test(parsedSymbol)) yahooSymbol = `${parsedSymbol}.HK`;
-        else if (['BTC', 'ETH', 'SOL', 'XRP', 'ADA', 'DOGE'].includes(parsedSymbol)) yahooSymbol = `${parsedSymbol}-USD`;
 
-        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1m&range=1d`;
+        // Clean query text (for cryptos e.g. BTC, HK stocks e.g. 0005, US stocks e.g. TSLA)
+        const searchUrl = `https://symbol-search.tradingview.com/symbol_search/?text=${encodeURIComponent(parsedSymbol)}`;
         
-        try {
-          const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(yahooUrl)}`);
-          if (res.ok) {
-            const data = await res.json();
-            const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-            if (price) return parseFloat(price);
+        // Stack of high-availability proxy endpoints to bypass CORS limits smoothly
+        const proxies = [
+          `https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`,
+          `https://api.allorigins.win/raw?url=${encodeURIComponent(searchUrl)}`,
+          `https://api.codetabs.com/v1/proxy/?url=${encodeURIComponent(searchUrl)}`
+        ];
+
+        let bestMatch = null;
+        for (const proxyUrl of proxies) {
+          try {
+            const res = await fetch(proxyUrl);
+            if (res.ok) {
+              let data;
+              if (proxyUrl.includes("allorigins")) {
+                const wrapper = await res.json();
+                data = JSON.parse(wrapper.contents);
+              } else {
+                data = await res.json();
+              }
+              
+              if (Array.isArray(data) && data.length > 0) {
+                // Find symbol exact match
+                bestMatch = data.find(item => item.symbol.toUpperCase() === parsedSymbol) || data[0];
+                if (bestMatch) break;
+              }
+            }
+          } catch (e) {
+            console.warn(`Proxy ${proxyUrl} failed to fetch TradingView Symbol Search`);
           }
-        } catch (e) {
-          console.warn("Proxy 1 failed...");
         }
 
+        if (!bestMatch) {
+          console.warn("No symbol match resolved on TradingView search endpoints");
+          return null;
+        }
+
+        // Extract exchange and symbol prefix (e.g. NASDAQ:AAPL)
+        const exchange = (bestMatch.exchange || bestMatch.prefix || "").toUpperCase();
+        const symbolCode = (bestMatch.symbol || "").toUpperCase();
+        if (!exchange || !symbolCode) return null;
+
+        const ticker = `${exchange}:${symbolCode}`;
+
+        // Build the payload for scanner.tradingview.com/global/scan
+        const scannerUrl = `https://scanner.tradingview.com/global/scan`;
+        const payload = {
+          symbols: {
+            tickers: [ticker],
+            query: { types: [] }
+          },
+          columns: ["close"]
+        };
+
+        // Try direct first
         try {
-          const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`);
+          const res = await fetch(scannerUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
           if (res.ok) {
             const data = await res.json();
-            const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+            const price = data?.data?.[0]?.d?.[0];
             if (price) return parseFloat(price);
           }
         } catch (e) {
-          console.error("All proxies failed.");
+          console.warn("Direct scanner fetch blocked, falling back to proxy scanner request...");
         }
+
+        // Try proxy POST request with fully transparent CORS bypass
+        try {
+          const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(scannerUrl)}`;
+          const res = await fetch(proxyUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const price = data?.data?.[0]?.d?.[0];
+            if (price) return parseFloat(price);
+          }
+        } catch (e) {
+          console.error("All TradingView Scanner proxies failed.", e);
+        }
+
         return null;
       };
 
+      // --- STREAMING_CHUNK: Setting up Google Drive Sync triggers... ---
       const handleSaveWebAppUrl = () => {
         localStorage.setItem('vcp_gdrive_webapp_url', gdriveWebAppUrl);
         if (!gdriveWebAppUrl) return;
@@ -566,11 +748,9 @@ function doPost(e) {
         document.body.removeChild(textArea);
       };
 
-      // --- 絕對穩定的無阻塞非同步背景同步 ---
+      // Native Background Asynchronous Google Web Sync (CORS Guarded)
       const pushDataToGoogleSheets = (payload) => {
         if (!gdriveWebAppUrl) return;
-        
-        // 放入 setTimeout 確保在下一次 Event Loop 執行，100% 不阻塞 UI
         setTimeout(async () => {
           try {
             await fetch(gdriveWebAppUrl, {
@@ -580,12 +760,38 @@ function doPost(e) {
               body: JSON.stringify(payload)
             });
           } catch (error) {
-            console.warn("Background Sync Error (Ignored for Stability):", error);
+            console.warn("Background Sync Failed cleanly:", error);
           }
         }, 0);
       };
 
-      // 載入本地資料
+      // Fetch/Pull from Google Sheets Web App
+      const pullTradesFromGoogleSheets = async () => {
+        if (!gdriveWebAppUrl) return;
+        setSyncStatus('syncing');
+        try {
+          const response = await fetch(gdriveWebAppUrl, {
+            method: "POST",
+            redirect: "follow",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ action: "pull" })
+          });
+          const result = await response.json();
+          if (result && result.status === "success") {
+            if (result.active) updateTradesList(result.active);
+            if (result.history) updateHistoryList(result.history);
+            setSyncStatus('synced');
+            setTimeout(() => setSyncStatus(''), 3000);
+          } else {
+            setSyncStatus('error');
+          }
+        } catch (error) {
+          console.error("Failed to pull:", error);
+          setSyncStatus('error');
+        }
+      };
+
+      // --- STREAMING_CHUNK: Managing internal state storage... ---
       useEffect(() => {
         const cached = localStorage.getItem('vcp_state');
         if (cached) {
@@ -601,7 +807,6 @@ function doPost(e) {
         }
       }, []);
 
-      // 儲存邏輯：嚴格遵守本地優先寫入 (Local-First)
       const saveLocalData = (pIn, rPer, trds, hist) => {
         const payload = JSON.stringify({ portfolioInput: pIn, rPercent: rPer, trades: trds, history: hist });
         localStorage.setItem('vcp_state', payload);
@@ -659,12 +864,56 @@ function doPost(e) {
         const loadCalcPrice = async () => {
           if (!debouncedStockCode) return;
           setIsFetchingPrice(true);
+          setPriceFetchFailed(false);
           const price = await fetchPriceForSymbol(debouncedStockCode);
-          if (price) setEntry(price.toFixed(2));
+          if (price) {
+            setEntry(price.toFixed(2));
+          } else {
+            setPriceFetchFailed(true);
+          }
           setIsFetchingPrice(false);
         };
         loadCalcPrice();
       }, [debouncedStockCode]);
+
+      // --- STREAMING_CHUNK: Integrating the responsive TradingView Chart widget... ---
+      // Handle TradingView Script Loading and Widget Rendering
+      useEffect(() => {
+        if (!debouncedStockCode) return;
+
+        const containerId = "tv_chart_container";
+        const widgetId = "tradingview_widget_script";
+
+        const initWidget = () => {
+          if (window.TradingView) {
+            new window.TradingView.widget({
+              autosize: true,
+              symbol: debouncedStockCode,
+              interval: interval,
+              timezone: "Etc/UTC",
+              theme: theme === 'dark' ? "dark" : "light",
+              style: "1",
+              locale: lang === 'zh' ? "zh_TW" : "en",
+              toolbar_bg: theme === 'dark' ? "#131722" : "#f1f3f6",
+              enable_publishing: false,
+              hide_side_toolbar: false,
+              allow_symbol_change: true,
+              container_id: containerId
+            });
+          }
+        };
+
+        if (!document.getElementById(widgetId)) {
+          const script = document.createElement('script');
+          script.id = widgetId;
+          script.src = 'https://s3.tradingview.com/tv.js';
+          script.onload = initWidget;
+          document.head.appendChild(script);
+        } else {
+          const timer = setTimeout(initWidget, 100);
+          return () => clearTimeout(timer);
+        }
+      }, [debouncedStockCode, interval, theme, lang]);
 
       const refreshPortfolioPrices = async () => {
         if (!trades || trades.length === 0) return;
@@ -715,6 +964,7 @@ function doPost(e) {
 
       const oneR = portfolio * (parseFloat(rPercent) || 1) / 100;
 
+      // --- STREAMING_CHUNK: Computing VCP math constraints and safety limits... ---
       const slErrorMsg = useMemo(() => {
         const ePrice = parseFloat(entry) || 0;
         const rawVal = parseFloat(slValue) || 0;
@@ -745,26 +995,38 @@ function doPost(e) {
         }
       }, [entry, slValue, slMode, tradeType, slErrorMsg]);
 
+      // Can calculate targets & percentage changes even without Stop Loss configuration
       const rrRatioComputed = useMemo(() => {
         const ePrice = parseFloat(entry) || 0;
         const val = parseFloat(rrValue) || 0;
         const riskPerShare = slCalc.isValid ? Math.abs(ePrice - slCalc.price) : 0;
 
-        if (ePrice <= 0 || riskPerShare <= 0 || val <= 0) {
+        if (ePrice <= 0 || val <= 0) {
           return { ratio: 2.0, targetPrice: 0, targetPercent: 0, isValid: false };
         }
 
         if (rrMode === 'ratio') {
+          if (riskPerShare <= 0) {
+            return { ratio: val, targetPrice: 0, targetPercent: 0, isValid: false };
+          }
           const targetPrice = tradeType === 'buy' ? ePrice + (riskPerShare * val) : ePrice - (riskPerShare * val);
           return { ratio: val, targetPrice, targetPercent: (Math.abs(targetPrice - ePrice) / ePrice) * 100, isValid: true };
         } else if (rrMode === 'price') {
-          if (tradeType === 'buy' && val <= ePrice) return { ratio: 0, targetPrice: val, targetPercent: 0, isValid: false };
-          if (tradeType === 'sell' && val >= ePrice) return { ratio: 0, targetPrice: val, targetPercent: 0, isValid: false };
-          const ratio = Math.abs(val - ePrice) / riskPerShare;
-          return { ratio, targetPrice: val, targetPercent: (Math.abs(val - ePrice) / ePrice) * 100, isValid: true };
-        } else { 
+          const targetPrice = val;
+          const targetPercent = (Math.abs(targetPrice - ePrice) / ePrice) * 100;
+          const ratio = riskPerShare > 0 ? Math.abs(targetPrice - ePrice) / riskPerShare : 0;
+          const isPriceDirectionValid = tradeType === 'buy' ? targetPrice > ePrice : targetPrice < ePrice;
+          return { 
+            ratio, 
+            targetPrice, 
+            targetPercent, 
+            isValid: isPriceDirectionValid 
+          };
+        } else { // rrMode === 'percent'
+          const targetPercent = val;
           const targetPrice = tradeType === 'buy' ? ePrice * (1 + (val / 100)) : ePrice * (1 - (val / 100));
-          return { ratio: Math.abs(targetPrice - ePrice) / riskPerShare, targetPrice, targetPercent: val, isValid: true };
+          const ratio = riskPerShare > 0 ? Math.abs(targetPrice - ePrice) / riskPerShare : 0;
+          return { ratio, targetPrice, targetPercent, isValid: true };
         }
       }, [entry, rrValue, rrMode, slCalc, tradeType]);
 
@@ -844,10 +1106,11 @@ function doPost(e) {
         return { totalInvested, remainingCash, totalRiskR, investedPercent, netProfit, netProfitPercent, realizedPnL, realizedPnLPercent };
       }, [trades, history, portfolio, livePrices]);
 
+      // --- STREAMING_CHUNK: Managing trade operations (add/close/remove)... ---
       const handleAddTrade = () => {
         if (!calculations.isValid) return;
         const newTrade = {
-          id: Date.now(),
+          id: Date.now().toString(),
           symbol: debouncedStockCode || 'UNKNOWN',
           type: tradeType,
           entry: parseFloat(entry),
@@ -858,15 +1121,13 @@ function doPost(e) {
           riskR: riskR,
           rationale: rationale.trim(), 
         };
-        // 1. 本地更新
         updateTradesList([...trades, newTrade]);
         
-        // 2. 異步推送到 Google Sheets
         pushDataToGoogleSheets({
           action: "add",
           tradeId: newTrade.id,
           symbol: newTrade.symbol,
-          entryDate: new Date(newTrade.id).toLocaleString(),
+          entryDate: new Date(Number(newTrade.id)).toLocaleString(),
           type: newTrade.type,
           entry: newTrade.entry,
           stopLoss: slCalc.price,
@@ -901,14 +1162,12 @@ function doPost(e) {
           closedAt: closedAtTime
         };
 
-        const remainingActive = trades.filter(t => t.id !== closingTrade.id);
+        const remainingActive = trades.filter(t => String(t.id) !== String(closingTrade.id));
         const newHistory = [closedRecord, ...history];
 
-        // 1. 本地更新
         updateTradesList(remainingActive);
         updateHistoryList(newHistory);
 
-        // 2. 異步推送到 Google Sheets
         pushDataToGoogleSheets({
           action: "close",
           tradeId: closingTrade.id,
@@ -921,12 +1180,10 @@ function doPost(e) {
       };
 
       const removeTrade = (id) => {
-        // 使用 String 強制比對，解決可能型別錯誤導致刪除失敗
         updateTradesList(trades.filter(t => String(t.id) !== String(id)));
       };
       
       const removeHistoryItem = (id) => {
-        // 使用 String 強制比對
         updateHistoryList(history.filter(h => String(h.id) !== String(id)));
       };
 
@@ -947,15 +1204,9 @@ function doPost(e) {
         setEditingTradeId(null);
       };
 
-      const getStopLossBtnClass = (mode) => "px-2 py-1 rounded-md font-medium transition-colors cursor-pointer " + (slMode === mode ? "t-bg-card text-blue-500 shadow-sm" : "t-text-muted t-hover-bg");
-      const getRrBtnClass = (mode) => "px-2 py-1 rounded-md font-medium transition-colors cursor-pointer " + (rrMode === mode ? "t-bg-card text-blue-500 shadow-sm" : "t-text-muted t-hover-bg");
+      const getStopLossBtnClass = (mode) => "px-3 py-1 rounded-md font-medium text-xs transition-colors cursor-pointer " + (slMode === mode ? "bg-white dark:bg-neutral-800 text-blue-500 shadow-sm" : "text-gray-500 dark:text-neutral-400 hover:text-gray-700");
+      const getRrBtnClass = (mode) => "px-3 py-1 rounded-md font-medium text-xs transition-colors cursor-pointer " + (rrMode === mode ? "bg-white dark:bg-neutral-800 text-blue-500 shadow-sm" : "text-gray-500 dark:text-neutral-400 hover:text-gray-700");
 
-      const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
-      const toggleLang = () => setLang(prev => prev === 'en' ? 'zh' : 'en');
-      const decreaseFont = () => setFontScaleIdx(prev => Math.max(0, prev - 1));
-      const increaseFont = () => setFontScaleIdx(prev => Math.min(fontScaleStyles.length - 1, prev + 1));
-
-      // Target Risk Labels & Colors
       const getRiskMessage = (r) => {
         if (r < 1.0) return { msg: t.riskTooSmall, color: 'text-yellow-500' };
         if (r <= 2.0) return { msg: t.riskOptimal, color: 'text-green-500' };
@@ -982,66 +1233,53 @@ function doPost(e) {
         return uniqueMarks;
       }, [maxTargetRisk]);
 
-      useEffect(() => {
-        if (!debouncedStockCode || !chartContainerRef.current) return;
-        
-        chartContainerRef.current.innerHTML = '';
-        const script = document.createElement('script');
-        script.src = 'https://s3.tradingview.com/tv.js';
-        script.async = true;
-        script.onload = () => {
-          if (window.TradingView) {
-            let tvSymbol = debouncedStockCode;
-            if (/^\d{4}$/.test(tvSymbol)) tvSymbol = `HKEX:${tvSymbol}`;
-            else if (['BTC', 'ETH', 'SOL', 'XRP'].includes(tvSymbol)) tvSymbol = `BINANCE:${tvSymbol}USDT`;
+      const getProgressiveBetClass = (val) => {
+        return "px-2.5 py-1 rounded-md font-medium text-xs transition-all cursor-pointer " + 
+          (firstBetMultiplier === val 
+            ? "bg-white dark:bg-neutral-800 text-blue-500 shadow-sm" 
+            : "text-gray-500 hover:text-gray-700");
+      };
 
-            new window.TradingView.widget({
-              autosize: true,
-              symbol: tvSymbol,
-              interval: interval,
-              timezone: "Etc/UTC",
-              theme: theme,
-              style: "1",
-              locale: lang === 'zh' ? 'zh_TW' : 'en',
-              enable_publishing: false,
-              hide_top_toolbar: true,
-              hide_legend: false,
-              save_image: false,
-              container_id: chartContainerRef.current.id,
-            });
-          }
-        };
-        document.head.appendChild(script);
-        return () => { if (chartContainerRef.current) chartContainerRef.current.innerHTML = ''; };
-      }, [debouncedStockCode, interval, theme]);
+      const iOSCardClass = `bg-white dark:bg-[#1C1C1E] rounded-2xl p-[1.5em] shadow-sm mb-[1.5em] transition-colors relative z-0`;
+      const iOSInputClass = `w-full bg-transparent border-b-2.1 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 pl-5`;
 
-      const activeFontSizeStyle = fontScaleStyles[fontScaleIdx];
+      const ScrollingCopyrightFooter = () => html`
+        <div class="py-8 text-center text-[0.75em] text-gray-400 dark:text-gray-600 border-t border-gray-100 dark:border-neutral-900 mt-8 mb-4">
+          <span>© 2026 Trading Risk Calculator. All Rights Reserved.</span>
+        </div>
+      `;
 
+      // --- STREAMING_CHUNK: Rendering navigation ribbon and panels... ---
       return html`
-        <div style=${{ fontSize: activeFontSizeStyle }} class="flex-1 w-full flex flex-col font-sans">
+        <div class="h-full w-full flex flex-col overflow-hidden bg-gray-50 dark:bg-black text-gray-900 dark:text-white transition-colors duration-300 font-sans">
           
-          <nav class="flex-shrink-0 z-50 sticky top-0 t-bg-main bg-opacity-80 backdrop-blur-md border-b t-border-main no-swipe">
+          <!-- FIXED TOP NAVIGATION RIBBON (Centered tab selector) -->
+          <nav class="shrink-0 z-40 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md border-b border-gray-200 dark:border-neutral-800 no-swipe">
             <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between w-full">
+              
+              <!-- Left settings three-dots trigger -->
               <div class="flex-1 flex justify-start items-center">
-                 <div class="flex items-center t-tab-bg rounded-full px-2 py-1">
-                    <button onClick=${decreaseFont} class="px-2 text-sm font-semibold hover:text-blue-500 disabled:opacity-30" disabled=${fontScaleIdx === 0}>A</button>
-                    <div class="w-px h-4 t-border-main mx-1"></div>
-                    <button onClick=${increaseFont} class="px-2 text-lg font-semibold hover:text-blue-500 disabled:opacity-30" disabled=${fontScaleIdx === fontScaleStyles.length - 1}>A</button>
-                 </div>
+                 <button 
+                   onClick=${() => setShowSettingsModal(true)} 
+                   class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-800 transition text-gray-600 dark:text-gray-300 cursor-pointer"
+                   title=${t.settings}
+                 >
+                   <${ThreeDotsIcon} />
+                 </button>
               </div>
               
+              <!-- Center Tab Sizer -->
               <div class="flex-shrink-0 flex justify-center items-center w-[55%] sm:w-auto relative" style=${{ maxWidth: '60vw' }}>
-                <!-- Fade Edges -->
-                <div class="absolute left-0 top-0 bottom-0 w-4 sm:w-6 bg-gradient-to-r from-[var(--bg-main)] to-transparent z-10 pointer-events-none"></div>
-                <div class="absolute right-0 top-0 bottom-0 w-4 sm:w-6 bg-gradient-to-l from-[var(--bg-main)] to-transparent z-10 pointer-events-none"></div>
+                <div class="absolute left-0 top-0 bottom-0 w-4 sm:w-6 bg-gradient-to-r from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none"></div>
+                <div class="absolute right-0 top-0 bottom-0 w-4 sm:w-6 bg-gradient-to-l from-white dark:from-neutral-900 to-transparent z-10 pointer-events-none"></div>
                 
-                <div ref=${ribbonContainerRef} class="flex t-tab-bg p-1 rounded-xl shadow-inner text-sm overflow-x-auto snap-x snap-mandatory hide-scrollbar relative z-0 w-full">
+                <div ref=${ribbonContainerRef} class="flex bg-gray-100 dark:bg-neutral-800 p-0.5 rounded-xl shadow-inner text-sm overflow-x-auto snap-x snap-mandatory hide-scrollbar relative z-0 w-full">
                   ${tabsOrder.map((tabId) => html`
                     <button 
                       key=${tabId}
                       ref=${el => tabButtonRefs.current[tabId] = el}
                       onClick=${() => setActiveTab(tabId)}
-                      class=${`snap-center flex-shrink-0 px-4 sm:px-6 py-1.5 rounded-lg font-bold transition-all flex items-center space-x-1 ${activeTab === tabId ? 't-tab-active' : 't-tab-inactive t-hover-bg'}`}
+                      class=${`snap-center flex-shrink-0 px-3.5 sm:px-6 py-1.5 rounded-lg font-bold transition-all flex items-center space-x-1 cursor-pointer ${activeTab === tabId ? 'bg-white dark:bg-neutral-700 text-blue-500 shadow' : 'text-gray-500 dark:text-neutral-400 hover:text-gray-700'}`}
                     >
                       ${tabId === 'calc' ? html`<${CalculatorIcon} /><span>${t.calcTab}</span>` : tabId === 'port' ? html`<${BriefcaseIcon} /><span>${t.portTab}</span>` : html`<${HistoryIcon} /><span>${t.historyTab}</span>`}
                     </button>
@@ -1049,576 +1287,751 @@ function doPost(e) {
                 </div>
               </div>
 
-              <div class="flex-1 flex justify-end items-center space-x-1">
-                <button onClick=${toggleLang} class="p-2 rounded-full t-hover-bg transition">
-                  <${GlobeIcon} />
-                </button>
-                <button onClick=${toggleTheme} class="p-2 rounded-full t-hover-bg transition">
-                  ${theme === 'light' ? html`<${MoonIcon} />` : html`<${SunIcon} />`}
-                </button>
-              </div>
+              <!-- Right Spacer for symmetrical centering -->
+              <div class="flex-1 flex justify-end"></div>
             </div>
           </nav>
 
-          <main class="w-full relative overflow-x-hidden flex-1">
+          <!-- GLOBAL FULL-BODY SWIPER VIEWPORT -->
+          <main 
+            class="flex-1 w-full overflow-hidden relative"
+            onTouchStart=${handleTouchStart}
+            onTouchMove=${handleTouchMove}
+            onTouchEnd=${handleTouchEnd}
+          >
              <div 
-               class=${`flex ${isDragging ? '' : 'transition-transform duration-300 ease-out'}`}
-               style=${{ width: '300%', transform: `translateX(calc(${-activeTabIndex * 33.333}% + ${dragOffset}px))`, alignItems: 'flex-start' }}
-               onTouchStart=${handleTouchStart}
-               onTouchMove=${handleTouchMove}
-               onTouchEnd=${handleTouchEnd}
+               class=${`flex h-full w-[300%] ${isDragging ? '' : 'transition-transform duration-300 ease-out'}`}
+               style=${{ transform: `translateX(calc(${-activeTabIndex * 33.333}% + ${dragOffset}px))`, alignItems: 'flex-start' }}
              >
-                <!-- CALCULATOR PANE -->
-                <div class=${`w-1/3 flex-shrink-0 px-4 pt-6 pb-12 ${activeTab === 'calc' || renderedTab === 'calc' ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
-                  <div class="max-w-3xl mx-auto">
-                    <div class="flex justify-between items-center mb-4 px-2 text-sm t-text-muted">
-                      <span>${t.portfolioSize}: <strong class="t-text-main">$${portfolio.toLocaleString()}</strong></span>
-                      <span class="text-xs font-semibold px-3 py-1 rounded-full t-blue-badge">
-                        ${gdriveWebAppUrl ? t.cloudSyncing : t.localMode}
-                      </span>
-                      <span>1R = <strong class="text-blue-500">$${oneR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong></span>
-                    </div>
-
-                    <div class="t-bg-card rounded-2xl p-6 shadow-sm mb-6 relative z-0">
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                        <div class="col-span-1 md:col-span-2">
-                          <label class="block text-sm font-semibold t-text-muted mb-2 uppercase tracking-wider flex justify-between">
-                            ${t.stockCode}
-                            ${isFetchingPrice && html`<span class="text-blue-400 normal-case text-xs flex items-center"><${ActivityIcon} class="mr-1 animate-pulse" /> ${t.fetchingPrice}</span>`}
-                          </label>
-                          <div class="relative no-swipe">
-                            <input type="text" value=${stockCode} onChange=${(e) => setStockCode(e.target.value)} class="t-input font-bold uppercase" placeholder="AAPL" autoCapitalize="characters" autoComplete="off" spellCheck="false" />
-                            <${ChartIcon} class="absolute right-2 top-2 t-text-muted pointer-events-none" />
-                          </div>
-                        </div>
-
-                        <div class="flex flex-col justify-between h-full">
-                          <div class="flex justify-between items-center mb-2 h-7">
-                            <label class="block text-sm font-semibold t-text-muted uppercase tracking-wider">${t.entryPrice}</label>
-                            <div class="flex t-tab-bg p-0.5 rounded-lg text-xs no-swipe">
-                              <button type="button" onClick=${() => setTradeType('buy')} class=${`px-2 py-1 rounded-md font-medium transition-colors ${tradeType === 'buy' ? 'bg-green-500 text-white shadow-sm' : 't-text-muted t-hover-bg'}`}>${t.directionBuy}</button>
-                              <button type="button" onClick=${() => setTradeType('sell')} class=${`px-2 py-1 rounded-md font-medium transition-colors ${tradeType === 'sell' ? 'bg-red-500 text-white shadow-sm' : 't-text-muted t-hover-bg'}`}>${t.directionSell}</button>
-                            </div>
-                          </div>
-                          <div class="relative no-swipe">
-                            <span class="absolute left-0 top-2 t-text-muted font-medium">$</span>
-                            <input type="number" step="any" inputMode="decimal" value=${entry} onChange=${(e) => setEntry(e.target.value)} class="t-input pl-5" placeholder="150.00" />
-                          </div>
-                        </div>
-
-                        <div class="flex flex-col justify-between h-full">
-                          <div class="flex justify-between items-center mb-2 h-7">
-                            <label class="block text-sm font-semibold t-text-muted uppercase tracking-wider">${t.stopLoss}</label>
-                            <div class="flex t-tab-bg p-0.5 rounded-lg text-xs no-swipe">
-                              <button type="button" onClick=${() => handleToggleSLMode('price')} class=${getStopLossBtnClass('price')}>${t.stopLossModePrice}</button>
-                              <button type="button" onClick=${() => handleToggleSLMode('percent')} class=${getStopLossBtnClass('percent')}>${t.stopLossModePercent}</button>
-                            </div>
-                          </div>
-                          <div class="relative no-swipe">
-                            <span class="absolute left-0 top-2 t-text-muted font-medium">${slMode === 'price' ? '$' : '%'}</span>
-                            <input type="number" step="any" inputMode="decimal" value=${slValue} onChange=${(e) => setSlValue(e.target.value)} class="t-input pl-5" placeholder=${slMode === 'price' ? (tradeType === 'buy' ? '140.00' : '160.00') : '5.00'} />
-                          </div>
-                          ${slErrorMsg ? html`
-                            <div class="mt-2 text-xs text-red-500 font-medium"><${AlertIcon} class="inline mr-1 mb-1" /> ${slErrorMsg}</div>
-                          ` : (slCalc.isValid && html`
-                            <div class="mt-2 text-xs t-text-muted"><span>${slMode === 'price' ? html`Calculated Percentage: <strong>-${slCalc.percent.toFixed(2)}%</strong>` : html`Calculated Price: <strong>$${slCalc.price.toFixed(2)}</strong>`}</span></div>
-                          `)}
-                        </div>
-
-                        <div class="col-span-1 md:col-span-2 mt-4">
-                          <div class="flex justify-between items-end mb-2">
-                            <div class="flex flex-col">
-                              <div class="flex items-center space-x-2">
-                                <label class="block text-sm font-semibold t-text-muted uppercase tracking-wider">${t.targetRisk}</label>
-                                <button onClick=${() => setShowTargetRiskSettings(!showTargetRiskSettings)} class="t-text-muted hover:text-blue-500 transition-colors no-swipe">
-                                  <${GearIcon} class="w-5 h-5 mb-1" />
-                                </button>
-                              </div>
-                              <span class=${`text-xs italic font-medium transition-colors ${riskInfo.color}`}>${riskInfo.msg}</span>
-                            </div>
-                            <div class="text-right">
-                               <span class=${`font-bold text-xl transition-colors ${riskInfo.color}`}>${formatR(riskR)} R</span>
-                               <div class="text-xs t-text-muted normal-case">Risk Amount: $${(oneR * riskR).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                            </div>
-                          </div>
-
-                          ${showTargetRiskSettings && html`
-                            <div class="mb-4 p-3 t-gray-bg rounded-xl border t-border-main flex items-center justify-between no-swipe">
-                              <label class="text-sm font-medium t-text-muted">Set Max Target Risk (R)</label>
-                              <input type="number" step="0.5" value=${maxTargetRisk} onChange=${(e) => handleSaveMaxTargetRisk(e.target.value)} class="w-16 t-bg-card border t-border-main px-2 py-1 rounded-md text-center text-sm focus:outline-none focus:border-blue-500" />
-                            </div>
-                          `}
-                          
-                          <div class="relative pt-1 no-swipe">
-                            <input type="range" min="0.0" max=${maxTargetRisk} step="0.1" value=${riskR} onChange=${(e) => setRiskR(parseFloat(e.target.value))} class="w-full accent-blue-500" />
-                            <div class="relative h-5 w-full text-xs t-text-muted mt-1">
-                              ${targetRiskMarks.map(mark => html`
-                                <span class=${`absolute whitespace-nowrap ${mark.isBold ? 'font-bold' : ''} ${mark.isMax ? 'text-red-400 font-semibold' : ''}`} style=${{ left: `calc(13px + (100% - 26px) * ${mark.val / maxTargetRisk})`, transform: 'translateX(-50%)' }}>
-                                  ${mark.label}
-                                </span>
-                              `)}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div class="col-span-1 md:col-span-2 mt-4">
-                          <div class="flex justify-between items-center mb-2">
-                            <label class="block text-sm font-semibold t-text-muted uppercase tracking-wider">${t.rrRatio}</label>
-                            <div class="flex t-tab-bg p-0.5 rounded-lg text-xs no-swipe">
-                              <button type="button" onClick=${() => handleToggleRRMode('ratio')} class=${getRrBtnClass('ratio')}>${t.rrModeRatio}</button>
-                              <button type="button" onClick=${() => handleToggleRRMode('price')} class=${getRrBtnClass('price')}>${t.rrModePrice}</button>
-                              <button type="button" onClick=${() => handleToggleRRMode('percent')} class=${getRrBtnClass('percent')}>${t.rrModePercent}</button>
-                            </div>
-                          </div>
-
-                          ${rrMode === 'ratio' ? html`
-                            <div class="relative pt-1 no-swipe">
-                              <div class="flex justify-between items-center text-sm t-text-muted mb-1">
-                                <span>Selected Implied Ratio:</span>
-                                <span class="font-bold text-green-500">1 : ${formatRR(rrValue)}</span>
-                              </div>
-                              <input type="range" min="1.0" max="5.0" step="0.5" value=${rrValue} onChange=${(e) => setRrValue(e.target.value)} class="w-full accent-green-500" />
-                              <div class="relative h-5 w-full text-xs t-text-muted mt-1">
-                                <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.0)', transform: 'translateX(-50%)' }}>1</span>
-                                <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.25)', transform: 'translateX(-50%)' }}>2</span>
-                                <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.5)', transform: 'translateX(-50%)' }}>3</span>
-                                <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.75)', transform: 'translateX(-50%)' }}>4</span>
-                                <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 1.0)', transform: 'translateX(-50%)' }}>5</span>
-                              </div>
-                            </div>
-                          ` : html`
-                            <div class="relative no-swipe">
-                              <span class="absolute left-0 top-2 t-text-muted font-medium">${rrMode === 'price' ? '$' : '%'}</span>
-                              <input type="number" step="any" inputMode="decimal" value=${rrValue} onChange=${(e) => setRrValue(e.target.value)} class="t-input pl-5" placeholder=${rrMode === 'price' ? '180.00' : '20.00'} />
-                            </div>
-                          `}
-
-                          ${rrRatioComputed.isValid && html`
-                            <div class="mt-2 text-xs t-text-muted flex flex-wrap gap-x-4">
-                              ${rrMode !== 'ratio' && html`<span>Ratio: <strong>1 : ${formatRR(rrRatioComputed.ratio)}</strong></span>`}
-                              ${rrMode !== 'price' && html`<span>Price: <strong>$${rrRatioComputed.targetPrice.toFixed(2)}</strong></span>`}
-                              ${rrMode !== 'percent' && html`<span>Gain: <strong>+${rrRatioComputed.targetPercent.toFixed(2)}%</strong></span>`}
-                            </div>
-                          `}
-                        </div>
+                <!-- CALCULATOR VIEW -->
+                <div 
+                  ref=${el => scrollPanesRefs.current['calc'] = el}
+                  class=${`w-1/3 h-full tab-scroll-pane hide-scrollbar px-4 pt-6 pb-24 ${activeTab === 'calc' || renderedTab === 'calc' ? 'opacity-100' : 'opacity-0 overflow-hidden'}`}
+                >
+                  <div class="max-w-3xl mx-auto flex flex-col justify-between min-h-full">
+                    <div>
+                      <div class="flex justify-between items-center mb-4 px-2 text-sm text-gray-500 dark:text-gray-400">
+                        <span>${t.portfolioSize}: <strong class="text-gray-800 dark:text-gray-200">$${portfolio.toLocaleString()}</strong></span>
+                        <span class="text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                          ${gdriveWebAppUrl ? t.cloudSyncing : t.localMode}
+                        </span>
+                        <span>1R = <strong class="text-blue-500">$${oneR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong></span>
                       </div>
-                    </div>
 
-                    <div class="t-bg-card rounded-2xl p-6 shadow-sm mb-6 relative z-0 overflow-hidden">
-                       <div class="flex justify-between items-center mb-4 no-swipe">
-                          <label class="block text-sm font-semibold t-text-muted uppercase tracking-wider">TradingView</label>
-                          <div class="flex space-x-1 t-gray-bg p-1 rounded-lg">
-                            ${Object.entries(t.chartTabs).map(([key, label]) => html`
-                              <button key=${key} onClick=${() => setInterval(key)} class=${`px-3 py-1 rounded-md text-sm font-medium transition-colors ${interval === key ? 't-bg-card text-blue-500 shadow-sm' : 't-text-muted t-hover-bg'}`}>${label}</button>
+                      <!-- Input Settings Card -->
+                      <div class=${iOSCardClass}>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                          <div class="col-span-1 md:col-span-2">
+                            <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider flex justify-between">
+                              ${t.stockCode}
+                              ${isFetchingPrice && html`<span class="text-blue-400 normal-case text-xs flex items-center"><${ActivityIcon} class="mr-1 animate-pulse" /> ${t.fetchingPrice}</span>`}
+                            </label>
+                            <div class="relative no-swipe">
+                              <input type="text" value=${stockCode} onChange=${(e) => setStockCode(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 font-bold uppercase" placeholder="AAPL" autoCapitalize="characters" autoComplete="off" spellCheck="false" />
+                              <${ChartIcon} class="absolute right-2 top-2 text-gray-400 pointer-events-none" />
+                            </div>
+                            ${priceFetchFailed && html`
+                              <div class="mt-2 text-xs text-red-500 font-medium flex items-center">
+                                <${AlertIcon} class="mr-1.5" /> ${t.priceLookupError}
+                              </div>
+                            `}
+                          </div>
+
+                          <!-- Entry Price Card Input -->
+                          <div class="flex flex-col justify-between h-full">
+                            <div class="flex justify-between items-center mb-2 h-7">
+                              <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.entryPrice}</label>
+                              <div class="flex bg-gray-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs no-swipe">
+                                <button type="button" onClick=${() => setTradeType('buy')} class=${`px-2 py-1 rounded-md font-medium transition-colors ${tradeType === 'buy' ? 'bg-green-500 text-white shadow-sm' : 'text-gray-500'}`}>${t.directionBuy}</button>
+                                <button type="button" onClick=${() => setTradeType('sell')} class=${`px-2 py-1 rounded-md font-medium transition-colors ${tradeType === 'sell' ? 'bg-red-500 text-white shadow-sm' : 'text-gray-500'}`}>${t.directionSell}</button>
+                              </div>
+                            </div>
+                            <div class="relative no-swipe">
+                              <span class="absolute left-0 top-2 text-gray-400 font-medium">$</span>
+                              <input type="number" step="any" inputMode="decimal" value=${entry} onChange=${(e) => setEntry(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 pl-5" placeholder="150.00" />
+                            </div>
+                          </div>
+
+                          <!-- Stop Loss Mode & Card Input -->
+                          <div class="flex flex-col justify-between h-full">
+                            <div class="flex justify-between items-center mb-2 h-7">
+                              <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.stopLoss}</label>
+                              <div class="flex bg-gray-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs no-swipe">
+                                <button type="button" onClick=${() => handleToggleSLMode('price')} class=${getStopLossBtnClass('price')}>${t.stopLossModePrice}</button>
+                                <button type="button" onClick=${() => handleToggleSLMode('percent')} class=${getStopLossBtnClass('percent')}>${t.stopLossModePercent}</button>
+                              </div>
+                            </div>
+                            <div class="relative no-swipe">
+                              <span class="absolute left-0 top-2 text-gray-400 font-medium">${slMode === 'price' ? '$' : '%'}</span>
+                              <input type="number" step="any" inputMode="decimal" value=${slValue} onChange=${(e) => setSlValue(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 pl-5" placeholder=${slMode === 'price' ? (tradeType === 'buy' ? '140.00' : '160.00') : '5.00'} />
+                            </div>
+                            ${slErrorMsg ? html`
+                              <div class="mt-2 text-xs text-red-500 font-medium"><${AlertIcon} class="inline mr-1 mb-1" /> ${slErrorMsg}</div>
+                            ` : (slCalc.isValid && html`
+                              <div class="mt-2 text-xs text-gray-400 dark:text-neutral-500"><span>${slMode === 'price' ? html`Calculated Percentage: <strong>-${slCalc.percent.toFixed(2)}%</strong>` : html`Calculated Price: <strong>$${slCalc.price.toFixed(2)}</strong>`}</span></div>
                             `)}
                           </div>
-                       </div>
-                       <div class="w-full h-72 t-gray-bg rounded-xl flex items-center justify-center border t-border-main relative no-swipe">
-                          ${!debouncedStockCode && html`<div class="t-text-muted flex flex-col items-center text-sm"><${TrendingIcon} class="w-8 h-8 mb-2 opacity-50" /><p>${t.chartPlaceholder}</p></div>`}
-                          <div id="tv_chart_container" ref=${chartContainerRef} class=${`absolute inset-0 w-full h-full rounded-xl overflow-hidden ${debouncedStockCode ? 'opacity-100' : 'opacity-0'}`}/>
-                       </div>
-                    </div>
 
-                    <div class=${`t-bg-card rounded-2xl p-6 shadow-sm mb-6 relative z-0 border-2 ${calculations.isValid ? 'border-blue-500 border-opacity-30' : 'border-transparent'}`}>
-                      <div class="flex items-center mb-4">
-                        <${InfoIcon} class="text-blue-500 mr-2" />
-                        <h2 class="text-lg font-bold">${t.tradePlan}</h2>
-                      </div>
-
-                      ${!calculations.isValid ? html`
-                        <p class="t-text-muted text-center py-6">${t.invalidInput}</p>
-                      ` : html`
-                        <div class="space-y-4">
-                          <div class="t-blue-badge p-4 rounded-xl flex justify-between items-center">
-                            <span class="font-medium text-base">${t.positionSize}</span>
-                            <span class="text-2xl font-bold">${calculations.positionSize.toLocaleString()}</span>
-                          </div>
-
-                          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <div class="t-gray-bg p-4 rounded-xl flex flex-col justify-between">
-                                <span class="block text-xs t-text-muted mb-1">${t.capitalRequired}</span>
-                                <span class="font-bold text-lg">$${calculations.positionValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                             </div>
-                             <div class="t-gray-bg p-4 rounded-xl border border-green-500 border-opacity-30 flex flex-col justify-between">
-                                <span class="block text-xs text-green-600 dark:text-green-400 mb-1">${t.targetPrice}</span>
-                                <span class="font-bold text-lg text-green-600 dark:text-green-400">$${calculations.targetPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                             </div>
-                          </div>
-
-                          <div class="mt-6 pt-4 border-t t-border-main">
-                            <div class="flex justify-between items-center mb-3">
-                              <h3 class="font-semibold text-base">${t.scaleInTitle}</h3>
-                              <div class="flex t-tab-bg p-0.5 rounded-lg text-xs no-swipe">
-                                <button onClick=${() => setFirstBetMultiplier(0.3)} class=${`px-2 py-1 rounded-md font-bold transition-all ${firstBetMultiplier === 0.3 ? 'bg-blue-500 text-white' : 't-text-muted'}`}>0.3R</button>
-                                <button onClick=${() => setFirstBetMultiplier(0.4)} class=${`px-2 py-1 rounded-md font-bold transition-all ${firstBetMultiplier === 0.4 ? 'bg-blue-500 text-white' : 't-text-muted'}`}>0.4R</button>
-                                <button onClick=${() => setFirstBetMultiplier(0.5)} class=${`px-2 py-1 rounded-md font-bold transition-all ${firstBetMultiplier === 0.5 ? 'bg-blue-500 text-white' : 't-text-muted'}`}>0.5R</button>
+                          <!-- Adjustable Target Risk Drag Bar with Interactive Question Mark -->
+                          <div class="col-span-1 md:col-span-2 mt-4">
+                            <div class="flex justify-between items-end mb-2">
+                              <div class="flex flex-col">
+                                <div class="flex items-center space-x-2">
+                                  <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.targetRisk}</label>
+                                  <button onClick=${() => setShowTargetRiskHelp(!showTargetRiskHelp)} class="text-gray-400 hover:text-blue-500 transition-colors no-swipe cursor-pointer">
+                                    <${HelpCircleIcon} />
+                                  </button>
+                                </div>
+                                <span class=${`text-xs italic font-medium transition-colors ${riskInfo.color}`}>${riskInfo.msg}</span>
+                              </div>
+                              <div class="text-right">
+                                 <span class=${`font-bold text-xl transition-colors ${riskInfo.color}`}>${formatR(riskR)} R</span>
+                                 <div class="text-xs text-gray-400 dark:text-neutral-500 normal-case">Risk Amount: $${(oneR * riskR).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                               </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-4">
-                               <div class="t-blue-bg p-3 rounded-xl border border-blue-500 border-opacity-20">
-                                  <span class="block text-xs text-blue-500 uppercase tracking-wider mb-1">${t.firstBet} (${formatR(firstBetMultiplier)}R)</span>
-                                  <div class="font-bold text-lg text-blue-700 dark:text-blue-300">${calculations.scaleFirstShares.toLocaleString()} <span class="text-xs font-normal">shares</span></div>
-                                  <div class="text-xs t-text-muted mt-1">Capital: $${calculations.scaleFirstCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                               </div>
-                               <div class="t-gray-bg p-3 rounded-xl border t-border-main">
-                                  <span class="block text-xs t-text-muted uppercase tracking-wider mb-1">${t.remainingLabel} (${formatR(1 - firstBetMultiplier)}R)</span>
-                                  <div class="font-bold text-lg">${calculations.scaleRemainingShares.toLocaleString()} <span class="text-xs font-normal">shares</span></div>
-                                  <div class="text-xs t-text-muted mt-1">Capital: $${calculations.scaleRemainingCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                               </div>
+
+                            ${showTargetRiskHelp && html`
+                              <div class="mb-4 p-4 bg-blue-50/50 dark:bg-neutral-800/40 rounded-xl border border-blue-500/20 text-xs leading-relaxed text-gray-600 dark:text-neutral-300 space-y-3 no-swipe animate-fade-in">
+                                <div class="font-bold text-blue-800 dark:text-blue-400 text-sm">${t.targetRiskHelpTitle}</div>
+                                <p>${t.targetRiskHelpDesc}</p>
+                                <div class="border-t border-gray-200 dark:border-neutral-700 pt-3 flex items-center justify-between">
+                                  <label class="font-semibold text-gray-500 dark:text-neutral-400">${t.maxTargetRiskLabel}</label>
+                                  <input type="number" step="0.5" value=${maxTargetRisk} onChange=${(e) => handleSaveMaxTargetRisk(e.target.value)} class="w-16 bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 px-2 py-1 rounded-md text-center text-sm focus:outline-none focus:border-blue-500" />
+                                </div>
+                              </div>
+                            `}
+                            
+                            <div class="relative pt-1 no-swipe">
+                              <input type="range" min="0" max=${maxTargetRisk} step="0.1" value=${riskR} onChange=${(e) => setRiskR(parseFloat(e.target.value))} class="w-full accent-blue-500" />
+                              <div class="relative h-5 w-full text-xs text-gray-400 dark:text-neutral-500 mt-1">
+                                ${targetRiskMarks.map(mark => html`
+                                  <span class=${`absolute whitespace-nowrap ${mark.isBold ? 'font-bold text-gray-900 dark:text-white' : ''} ${mark.isMax ? 'text-red-400 font-semibold' : ''}`} style=${{ left: `calc(13px + (100% - 26px) * ${mark.val / maxTargetRisk})`, transform: 'translateX(-50%)' }}>
+                                    ${mark.label}
+                                  </span>
+                                `)}
+                              </div>
                             </div>
-                            <div class="text-xs text-blue-500 t-blue-bg p-2.5 rounded-lg mt-3">* ${t.avgUpOnly}</div>
                           </div>
 
-                          <div class="mt-6 pt-5 border-t t-border-main no-swipe">
-                            <label class="block text-sm font-semibold t-text-muted mb-2 uppercase tracking-wider">${t.tradingNotes}</label>
-                            <textarea value=${rationale} onChange=${(e) => setRationale(e.target.value)} placeholder=${t.notesPlaceholder} rows="3" class="w-full t-gray-bg border t-border-main px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-blue-500" />
+                          <!-- Reward:Risk Ratio Slider -->
+                          <div class="col-span-1 md:col-span-2 mt-4">
+                            <div class="flex justify-between items-center mb-2">
+                              <div class="flex items-center space-x-2">
+                                <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.rrRatio}</label>
+                                <button onClick=${() => setShowRRHelp(!showRRHelp)} class="text-gray-400 hover:text-blue-500 transition-colors no-swipe cursor-pointer">
+                                  <${HelpCircleIcon} />
+                                </button>
+                              </div>
+                              <div class="flex bg-gray-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs no-swipe">
+                                <button type="button" onClick=${() => handleToggleRRMode('ratio')} class=${getRrBtnClass('ratio')}>${t.rrModeRatio}</button>
+                                <button type="button" onClick=${() => handleToggleRRMode('price')} class=${getRrBtnClass('price')}>${t.rrModePrice}</button>
+                                <button type="button" onClick=${() => handleToggleRRMode('percent')} class=${getRrBtnClass('percent')}>${t.rrModePercent}</button>
+                              </div>
+                            </div>
+
+                            ${showRRHelp && html`
+                              <div class="mb-4 p-4 bg-blue-50/50 dark:bg-neutral-800/40 rounded-xl border border-blue-500/20 text-xs leading-relaxed text-gray-600 dark:text-neutral-300 space-y-1.5 no-swipe animate-fade-in">
+                                <div class="font-bold text-blue-800 dark:text-blue-300 text-sm">${t.rrHelpTitle}</div>
+                                <p>${t.rrHelpDesc}</p>
+                              </div>
+                            `}
+
+                            ${rrMode === 'ratio' ? html`
+                              <div class="relative pt-1 no-swipe">
+                                <div class="flex justify-between items-center text-sm text-gray-500 dark:text-neutral-400 mb-1">
+                                  <span>Selected Implied Ratio:</span>
+                                  <span class="font-bold text-green-500">1 : ${formatRR(rrValue)}</span>
+                                </div>
+                                <input type="range" min="1.0" max="5.0" step="0.5" value=${rrValue} onChange=${(e) => setRrValue(e.target.value)} class="w-full accent-green-500" />
+                                <div class="relative h-5 w-full text-xs text-gray-400 dark:text-neutral-500 mt-1">
+                                  <span class="absolute whitespace-nowrap font-bold text-gray-900 dark:text-white" style=${{ left: 'calc(13px + (100% - 26px) * 0.0)', transform: 'translateX(-50%)' }}>1</span>
+                                  <span class="absolute whitespace-nowrap font-bold text-gray-900 dark:text-white" style=${{ left: 'calc(13px + (100% - 26px) * 0.25)', transform: 'translateX(-50%)' }}>2</span>
+                                  <span class="absolute whitespace-nowrap font-bold text-gray-900 dark:text-white" style=${{ left: 'calc(13px + (100% - 26px) * 0.5)', transform: 'translateX(-50%)' }}>3</span>
+                                  <span class="absolute whitespace-nowrap font-bold text-gray-900 dark:text-white" style=${{ left: 'calc(13px + (100% - 26px) * 0.75)', transform: 'translateX(-50%)' }}>4</span>
+                                  <span class="absolute whitespace-nowrap font-bold text-gray-900 dark:text-white" style=${{ left: 'calc(13px + (100% - 26px) * 1.0)', transform: 'translateX(-50%)' }}>5</span>
+                                </div>
+                              </div>
+                            ` : html`
+                              <div class="relative no-swipe">
+                                <span class="absolute left-0 top-2 text-gray-400 font-medium">${rrMode === 'price' ? '$' : '%'}</span>
+                                <input type="number" step="any" inputMode="decimal" value=${rrValue} onChange=${(e) => setRrValue(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 pl-5" placeholder=${rrMode === 'price' ? '180.00' : '20.00'} />
+                              </div>
+                            `}
+
+                            ${rrRatioComputed.isValid && html`
+                              <div class="mt-2 text-xs text-gray-400 dark:text-neutral-500 flex flex-wrap gap-x-4">
+                                ${rrMode !== 'ratio' && html`<span>Ratio: <strong>1 : ${formatRR(rrRatioComputed.ratio)}</strong></span>`}
+                                ${rrMode !== 'price' && html`<span>Price: <strong>$${rrRatioComputed.targetPrice.toFixed(2)}</strong></span>`}
+                                ${rrMode !== 'percent' && html`<span>Gain: <strong>+${rrRatioComputed.targetPercent.toFixed(2)}%</strong></span>`}
+                              </div>
+                            `}
                           </div>
-                          
-                          <button onClick=${handleAddTrade} class="w-full mt-5 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl flex items-center justify-center transition-colors shadow-sm text-base">
-                            <${PlusIcon} class="mr-2" /> ${t.addToPortfolio}
-                          </button>
                         </div>
-                      `}
+                      </div>
+
+                      <!-- TradingView Chart sandbox -->
+                      <div class="bg-white dark:bg-neutral-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-800 mb-6 relative z-0 overflow-hidden">
+                         <div class="flex justify-between items-center mb-4 no-swipe">
+                            <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">TradingView Snapshot</label>
+                            <div class="flex space-x-1 bg-gray-100 dark:bg-neutral-800 p-1 rounded-lg">
+                              ${Object.entries(t.chartTabs).map(([key, label]) => html`
+                                <button key=${key} onClick=${() => setInterval(key)} class=${`px-3 py-1 rounded-md text-sm font-medium transition-colors cursor-pointer ${interval === key ? 'bg-white dark:bg-neutral-700 text-blue-500 shadow-sm' : 'text-gray-500 dark:text-neutral-400'}`}>${label}</button>
+                              `)}
+                            </div>
+                         </div>
+                         <div class="w-full h-72 bg-gray-50 dark:bg-neutral-950 rounded-xl flex items-center justify-center border border-gray-100 dark:border-neutral-800 relative no-swipe">
+                            ${!debouncedStockCode && html`<div class="text-gray-400 flex flex-col items-center text-sm"><${TrendingIcon} class="w-8 h-8 mb-2 opacity-50" /><p>${t.chartPlaceholder}</p></div>`}
+                            <div id="tv_chart_container" ref=${chartContainerRef} class=${`absolute inset-0 w-full h-full rounded-xl overflow-hidden ${debouncedStockCode ? 'opacity-100' : 'opacity-0'}`}/>
+                         </div>
+                      </div>
+
+                      <!-- Trade Execution Outcomes -->
+                      <div class=${`bg-white dark:bg-neutral-900 rounded-2xl p-6 shadow-sm mb-6 relative z-0 border-2 ${calculations.isValid ? 'border-blue-500 border-opacity-30' : 'border-transparent'}`}>
+                        <div class="flex items-center mb-4">
+                          <${InfoIcon} class="text-blue-500 mr-2" />
+                          <h2 class="text-lg font-bold">${t.tradePlan}</h2>
+                        </div>
+
+                        ${!calculations.isValid ? html`
+                          <div class="space-y-4">
+                            ${(parseFloat(entry) > 0 && rrRatioComputed.isValid) ? html`
+                              <div class="bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-500/20 space-y-2">
+                                <div class="flex justify-between items-center text-sm">
+                                  <span class="text-gray-500 dark:text-gray-400 font-medium">Entry Price:</span>
+                                  <span class="font-extrabold">$${parseFloat(entry).toFixed(2)}</span>
+                                </div>
+                                <div class="flex justify-between items-center text-sm">
+                                  <span class="text-gray-500 dark:text-gray-400 font-medium">${t.targetPrice}:</span>
+                                  <span class="font-extrabold text-green-500">$${rrRatioComputed.targetPrice.toFixed(2)}</span>
+                                </div>
+                                <div class="flex justify-between items-center text-sm border-t border-gray-200 dark:border-neutral-700 pt-2">
+                                  <span class="text-gray-500 dark:text-gray-400 font-medium">Gain Percentage Change:</span>
+                                  <span class="font-extrabold text-green-500">+${rrRatioComputed.targetPercent.toFixed(2)}%</span>
+                                </div>
+                              </div>
+                            ` : null}
+                            <p class="text-gray-500 dark:text-neutral-400 text-center py-6">${t.invalidInput}</p>
+                          </div>
+                        ` : html`
+                          <div class="space-y-4">
+                            <div class="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 p-4 rounded-xl flex justify-between items-center">
+                              <span class="font-medium text-base">${t.positionSize}</span>
+                              <span class="text-2xl font-bold">${calculations.positionSize.toLocaleString()}</span>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                               <div class="bg-gray-50 dark:bg-neutral-800 p-4 rounded-xl flex flex-col justify-between">
+                                  <span class="block text-xs text-gray-500 dark:text-gray-400 mb-1">${t.capitalRequired}</span>
+                                  <span class="font-bold text-lg text-gray-800 dark:text-gray-200">$${calculations.positionValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                               </div>
+                               <div class="bg-gray-50 dark:bg-neutral-800 p-4 rounded-xl border border-green-500 border-opacity-30 flex flex-col justify-between">
+                                  <span class="block text-xs text-green-600 dark:text-green-400 mb-1">${t.targetPrice}</span>
+                                  <span class="font-bold text-lg text-green-600 dark:text-green-400">$${calculations.targetPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                               </div>
+                            </div>
+
+                            <!-- Progressive Sizing configurations -->
+                            <div class="mt-6 pt-4 border-t border-gray-100 dark:border-neutral-800">
+                              <div class="flex justify-between items-center mb-3">
+                                <h3 class="font-semibold text-base">${t.scaleInTitle}</h3>
+                                <div class="flex bg-gray-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs no-swipe">
+                                  <button onClick=${() => setFirstBetMultiplier(0.3)} class=${getProgressiveBetClass(0.3)}>0.3R</button>
+                                  <button onClick=${() => setFirstBetMultiplier(0.4)} class=${getProgressiveBetClass(0.4)}>0.4R</button>
+                                  <button onClick=${() => setFirstBetMultiplier(0.5)} class=${getProgressiveBetClass(0.5)}>0.5R</button>
+                                </div>
+                              </div>
+                              <div class="grid grid-cols-2 gap-4">
+                                 <div class="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-xl border border-blue-500 border-opacity-20">
+                                    <span class="block text-xs text-blue-500 uppercase tracking-wider mb-1">${t.firstBet} (${formatR(firstBetMultiplier)}R)</span>
+                                    <div class="font-bold text-lg text-blue-700 dark:text-blue-300">${calculations.scaleFirstShares.toLocaleString()} <span class="text-xs font-normal">shares</span></div>
+                                    <div class="text-xs text-gray-500 dark:text-neutral-500 mt-1">Capital: $${calculations.scaleFirstCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                 </div>
+                                 <div class="bg-gray-50 dark:bg-neutral-800 p-3 rounded-xl border border-gray-200 dark:border-neutral-700">
+                                    <span class="block text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">${t.remainingLabel} (${formatR(1 - firstBetMultiplier)}R)</span>
+                                    <div class="font-bold text-lg text-gray-700 dark:text-gray-300">${calculations.scaleRemainingShares.toLocaleString()} <span class="text-xs font-normal">shares</span></div>
+                                    <div class="text-xs text-gray-500 dark:text-neutral-500 mt-1">Capital: $${calculations.scaleRemainingCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                 </div>
+                              </div>
+                              <div class="text-xs text-blue-500 bg-blue-50 dark:bg-blue-900/10 p-2.5 rounded-lg mt-3">* ${t.avgUpOnly}</div>
+                            </div>
+
+                            <div class="mt-6 pt-5 border-t border-gray-100 dark:border-neutral-800 no-swipe">
+                              <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">${t.tradingNotes}</label>
+                              <textarea value=${rationale} onChange=${(e) => setRationale(e.target.value)} placeholder=${t.notesPlaceholder} rows="3" class="w-full bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-blue-500" />
+                            </div>
+                            
+                            <button onClick=${handleAddTrade} class="w-full mt-5 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl flex items-center justify-center transition-colors shadow-sm text-base cursor-pointer">
+                              <${PlusIcon} class="mr-2" /> ${t.addToPortfolio}
+                            </button>
+                          </div>
+                        `}
+                      </div>
                     </div>
+
+                    <${ScrollingCopyrightFooter} />
                   </div>
                 </div>
 
-                <!-- PORTFOLIO PANE -->
-                <div class=${`w-1/3 flex-shrink-0 px-4 pt-6 pb-12 ${activeTab === 'port' || renderedTab === 'port' ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
-                  <div class="max-w-3xl mx-auto">
-                    ${trades.length > 0 && html`
-                      <div class=${`t-bg-card rounded-2xl p-6 shadow-sm flex items-center justify-between border-l-4 mb-6 ${portfolioStats.netProfit >= 0 ? 'border-green-500' : 'border-red-500'}`}>
-                        <div>
-                          <span class="block text-xs uppercase font-semibold t-text-muted tracking-wider">${t.overallPnL}</span>
-                          <span class=${`font-bold text-3xl ${portfolioStats.netProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>${portfolioStats.netProfit >= 0 ? '+' : ''}$${portfolioStats.netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <!-- PORTFOLIO VIEW -->
+                <div 
+                  ref=${el => scrollPanesRefs.current['port'] = el}
+                  class=${`w-1/3 h-full tab-scroll-pane hide-scrollbar px-4 pt-6 pb-24 ${activeTab === 'port' || renderedTab === 'port' ? 'opacity-100' : 'opacity-0 overflow-hidden'}`}
+                >
+                  <div class="max-w-3xl mx-auto flex flex-col justify-between min-h-full">
+                    <div>
+                      ${trades.length > 0 && html`
+                        <div class=${`bg-white dark:bg-neutral-900 rounded-2xl p-6 shadow-sm flex items-center justify-between border-l-4 mb-6 ${portfolioStats.netProfit >= 0 ? 'border-green-500' : 'border-red-500'}`}>
+                          <div>
+                            <span class="block text-xs uppercase font-semibold text-gray-500 dark:text-neutral-400 tracking-wider">${t.overallPnL}</span>
+                            <span class=${`font-bold text-3xl ${portfolioStats.netProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>${portfolioStats.netProfit >= 0 ? '+' : ''}$${portfolioStats.netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div>
+                            <span class=${`text-xs px-3 py-1.5 rounded-full font-bold ${portfolioStats.netProfit >= 0 ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'}`}>
+                              ${portfolio > 0 ? `${portfolioStats.netProfit >= 0 ? '+' : ''}${portfolioStats.netProfitPercent.toFixed(2)}%` : '0.00%'}
+                            </span>
+                          </div>
+                        </div>
+                      `}
+                      
+                      <div class=${iOSCardClass}>
+                        <h2 class="text-lg font-bold mb-4 flex items-center"><${BriefcaseIcon} class="mr-2 text-blue-500" /> Asset Configuration</h2>
+                        <div class="mb-6">
+                          <label class="block text-sm font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wider mb-2">${t.portfolioSize}</label>
+                          <div class="relative no-swipe">
+                            <span class="absolute left-0 top-2 text-gray-400 font-medium">$</span>
+                            <input type="text" inputMode="decimal" value=${portfolioInput} onChange=${handlePortfolioInputChange} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 pl-5 font-bold text-xl" placeholder="100,000" />
+                          </div>
                         </div>
                         <div>
-                          <span class=${`text-xs px-3 py-1.5 rounded-full font-bold ${portfolioStats.netProfit >= 0 ? 't-green-badge' : 't-red-badge'}`}>
-                            ${portfolio > 0 ? `${portfolioStats.netProfit >= 0 ? '+' : ''}${portfolioStats.netProfitPercent.toFixed(2)}%` : '0.00%'}
-                          </span>
-                        </div>
-                      </div>
-                    `}
-                    
-                    <div class="t-bg-card rounded-2xl p-6 shadow-sm mb-6 relative z-0">
-                      <h2 class="text-lg font-bold mb-4 flex items-center"><${BriefcaseIcon} class="mr-2 text-blue-500" /> Asset Configuration</h2>
-                      <div class="mb-6">
-                        <label class="block text-sm font-semibold t-text-muted uppercase tracking-wider mb-2">${t.portfolioSize}</label>
-                        <div class="relative no-swipe">
-                          <span class="absolute left-0 top-2 t-text-muted font-medium">$</span>
-                          <input type="text" inputMode="decimal" value=${portfolioInput} onChange=${handlePortfolioInputChange} class="t-input pl-5 font-bold text-xl" placeholder="100,000" />
-                        </div>
-                      </div>
-                      <div>
-                        <div class="flex justify-between items-end mb-2">
-                          <label class="block text-sm font-semibold t-text-muted uppercase tracking-wider">${t.baseRisk}</label>
-                          <div class="text-right">
-                            <span class="font-bold text-xl text-blue-500">${rPercent}%</span>
-                            <div class="text-xs t-text-muted normal-case">1R = $${oneR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                          <div class="flex justify-between items-end mb-2">
+                            <label class="block text-sm font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wider">${t.baseRisk}</label>
+                            <div class="text-right">
+                              <span class="font-bold text-xl text-blue-500">${rPercent}%</span>
+                              <div class="text-xs text-gray-500 dark:text-neutral-400 normal-case">1R = $${oneR.toLocaleString(undefined, {maximumFractionDigits: 0})}</div>
+                            </div>
                           </div>
-                        </div>
-                        <div class="relative pt-1 no-swipe">
-                          <input type="range" min="0.25" max="2.0" step="0.25" value=${rPercent} onChange=${(e) => updateRPercentValue(parseFloat(e.target.value))} class="w-full accent-blue-500" />
-                          <div class="relative h-5 w-full text-xs t-text-muted mt-1">
-                            <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.0)', transform: 'translateX(-50%)' }}>0.25%</span>
-                            <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.4286)', transform: 'translateX(-50%)' }}>1.0%</span>
-                            <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 1.0)', transform: 'translateX(-50%)' }}>2.0%</span>
+                          <div class="relative pt-1 no-swipe">
+                            <input type="range" min="0.25" max="2.0" step="0.25" value=${rPercent} onChange=${(e) => updateRPercentValue(parseFloat(e.target.value))} class="w-full accent-blue-500" />
+                            <div class="relative h-5 w-full text-xs text-gray-500 dark:text-neutral-400 mt-1">
+                              <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.0)', transform: 'translateX(-50%)' }}>0.25%</span>
+                              <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 0.4286)', transform: 'translateX(-50%)' }}>1.0%</span>
+                              <span class="absolute whitespace-nowrap" style=${{ left: 'calc(13px + (100% - 26px) * 1.0)', transform: 'translateX(-50%)' }}>2.0%</span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div class="t-bg-card rounded-2xl p-6 shadow-sm mb-6 relative z-0">
-                       <div class="flex justify-between items-center mb-4">
-                         <div class="flex items-center space-x-2">
-                           <h3 class="font-bold text-base">Live Risk Thermometer (Max ${maxLiveRisk}R)</h3>
-                           <button onClick=${() => setShowLiveRiskSettings(!showLiveRiskSettings)} class="p-1 t-text-muted hover:text-blue-500 transition-colors no-swipe">
-                             <${GearIcon} />
-                           </button>
+                      <div class=${iOSCardClass}>
+                         <div class="flex justify-between items-center mb-4">
+                           <div class="flex items-center space-x-2">
+                             <h3 class="font-bold text-base">Live Risk Thermometer (Max ${maxLiveRisk}R)</h3>
+                             <button onClick=${() => setShowLiveRiskSettings(!showLiveRiskSettings)} class="p-1 text-gray-400 hover:text-blue-500 transition-colors no-swipe cursor-pointer">
+                               <${GearIcon} />
+                             </button>
+                           </div>
                          </div>
-                       </div>
-                       
-                       ${showLiveRiskSettings && html`
-                         <div class="mb-4 p-3 t-gray-bg rounded-xl border t-border-main flex items-center justify-between no-swipe">
-                           <label class="text-sm font-medium t-text-muted">Set Max Live Risk (R)</label>
-                           <input type="number" step="0.5" value=${maxLiveRisk} onChange=${(e) => handleSaveMaxLiveRisk(e.target.value)} class="w-16 t-bg-card border t-border-main px-2 py-1 rounded-md text-center text-sm focus:outline-none focus:border-blue-500" />
+                         
+                         ${showLiveRiskSettings && html`
+                           <div class="mb-4 p-3 bg-gray-50 dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 flex items-center justify-between no-swipe">
+                             <label class="text-sm font-medium text-gray-500 dark:text-neutral-400 font-semibold">Set Max Live Risk (R)</label>
+                             <input type="number" step="0.5" value=${maxLiveRisk} onChange=${(e) => handleSaveMaxLiveRisk(e.target.value)} class="w-16 bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 px-2 py-1 rounded-md text-center text-sm focus:outline-none focus:border-blue-500 font-bold" />
+                           </div>
+                         `}
+
+                         <div class="mb-6">
+                            <div class="flex justify-between text-sm mb-1">
+                              <span class="font-medium text-gray-600 dark:text-gray-400">Live Risk</span>
+                              <span class=${`font-bold ${portfolioStats.totalRiskR > maxLiveRisk ? 'text-red-500' : 'text-blue-500'}`}>${portfolioStats.totalRiskR.toFixed(2)} R / ${maxLiveRisk} R</span>
+                            </div>
+                            <div class="w-full bg-gray-200 dark:bg-neutral-800 rounded-full h-4 overflow-hidden">
+                              <div class=${`h-full rounded-full transition-all duration-500 ${portfolioStats.totalRiskR > (maxLiveRisk * 0.7) ? 'bg-red-500' : portfolioStats.totalRiskR > (maxLiveRisk * 0.4) ? 'bg-yellow-500' : 'bg-green-500'}`} style=${{ width: `${Math.min((portfolioStats.totalRiskR / maxLiveRisk) * 100, 100)}%` }}></div>
+                            </div>
+                            ${portfolioStats.totalRiskR > maxLiveRisk && html`<div class="mt-2 text-xs text-red-500 font-semibold flex items-center"><${AlertIcon} class="mr-1" /> Warning: Live risk exceeds ${maxLiveRisk}R limit!</div>`}
                          </div>
-                       `}
-
-                       <div class="mb-6">
-                          <div class="flex justify-between text-sm mb-1">
-                            <span class="font-medium t-text-muted">Live Risk</span>
-                            <span class=${`font-bold ${portfolioStats.totalRiskR > maxLiveRisk ? 'text-red-500' : 'text-blue-500'}`}>${portfolioStats.totalRiskR.toFixed(2)} R / ${maxLiveRisk} R</span>
-                          </div>
-                          <div class="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-4 overflow-hidden">
-                            <div class=${`h-full rounded-full transition-all duration-500 ${portfolioStats.totalRiskR > (maxLiveRisk * 0.7) ? 'bg-red-500' : portfolioStats.totalRiskR > (maxLiveRisk * 0.4) ? 'bg-yellow-500' : 'bg-green-500'}`} style=${{ width: `${Math.min((portfolioStats.totalRiskR / maxLiveRisk) * 100, 100)}%` }}></div>
-                          </div>
-                          ${portfolioStats.totalRiskR > maxLiveRisk && html`<div class="mt-2 text-xs text-red-500 font-semibold flex items-center"><${AlertIcon} class="mr-1" /> Warning: Live risk exceeds ${maxLiveRisk}R limit!</div>`}
-                       </div>
-                       <div>
-                          <div class="flex justify-between text-sm mb-1">
-                            <span class="font-medium t-text-muted">${t.totalExposure}</span>
-                            <span class=${`font-bold ${portfolioStats.investedPercent > 100 ? 'text-red-500' : 't-text-main'}`}>${portfolioStats.investedPercent.toFixed(1)}%</span>
-                          </div>
-                          <div class="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-4 overflow-hidden flex">
-                            <div class=${`h-full transition-all duration-500 ${portfolioStats.investedPercent > 100 ? 'bg-red-500' : 'bg-blue-500'}`} style=${{ width: `${Math.min(portfolioStats.investedPercent, 100)}%` }}></div>
-                            <div class="bg-gray-300 dark:bg-gray-700 h-full flex-1"></div>
-                          </div>
-                          <div class="flex justify-between text-xs t-text-muted mt-2">
-                             <span>In Market: $${portfolioStats.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                             <span>Cash: $${portfolioStats.remainingCash.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                          </div>
-                          ${portfolioStats.investedPercent > 100 && html`<div class="mt-2 text-xs text-red-500 font-semibold flex items-center"><${AlertIcon} class="mr-1" /> ${t.exposureWarning}</div>`}
-                       </div>
-                    </div>
-
-                    <div class="t-bg-card rounded-2xl p-0 shadow-sm mb-6 relative z-0 overflow-hidden">
-                       <div class="p-4 border-b t-border-main flex justify-between items-center">
-                         <h3 class="font-bold text-base">${t.activeTrades}</h3>
-                         <div class="flex items-center space-x-4">
-                           ${portfolioLoadingPrices && html`<span class="text-xs text-blue-500 animate-pulse flex items-center"><${ActivityIcon} class="mr-1" /> Updating quotes...</span>`}
-                           ${trades.length > 0 && html`<button onClick=${() => setConfirmClearAction('trades')} class="text-xs font-bold text-red-500 hover:text-red-600 transition-colors">Clear All</button>`}
+                         <div>
+                            <div class="flex justify-between text-sm mb-1">
+                              <span class="font-medium text-gray-500 dark:text-neutral-400">${t.totalExposure}</span>
+                              <span class=${`font-bold ${portfolioStats.investedPercent > 100 ? 'text-red-500 animate-pulse' : 'text-gray-800 dark:text-gray-200'}`}>${portfolioStats.investedPercent.toFixed(1)}%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 dark:bg-neutral-800 rounded-full h-4 overflow-hidden flex">
+                              <div class=${`h-full transition-all duration-500 ${portfolioStats.investedPercent > 100 ? 'bg-red-500' : 'bg-blue-500'}`} style=${{ width: `${Math.min(portfolioStats.investedPercent, 100)}%` }}></div>
+                              <div class="bg-gray-300 dark:bg-neutral-700 h-full flex-1"></div>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-500 dark:text-neutral-400 mt-2">
+                               <span>In Market: $${portfolioStats.totalInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                               <span>Cash: $${portfolioStats.remainingCash.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                            </div>
+                            ${portfolioStats.investedPercent > 100 && html`<div class="mt-2 text-xs text-red-500 font-semibold flex items-center"><${AlertIcon} class="mr-1" /> ${t.exposureWarning}</div>`}
                          </div>
-                       </div>
-                       
-                       ${trades.length === 0 ? html`
-                         <div class="p-8 text-center t-text-muted text-sm">${t.noTrades}</div>
-                       ` : html`
-                         <div class="divide-y t-border-main">
-                           ${trades.map(trade => {
-                             const livePrice = livePrices[trade.symbol];
-                             const hasLivePrice = livePrice !== undefined && livePrice !== null && trade.symbol !== 'UNKNOWN';
-                             const isBuy = trade.type !== 'sell';
-                             const tradeProfit = hasLivePrice ? (isBuy ? (livePrice - trade.entry) : (trade.entry - livePrice)) * trade.shares : 0;
-                             const profitPercent = hasLivePrice ? ((isBuy ? (livePrice - trade.entry) : (trade.entry - livePrice)) / trade.entry) * 100 : 0;
-                             const isEditingNote = editingTradeId === trade.id;
+                      </div>
 
-                             return html`
-                               <div key=${trade.id} class="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between t-hover-bg transition-colors gap-4">
-                                 <div class="flex-1 min-w-0 w-full">
-                                   <div class="font-bold text-lg mb-1 flex flex-wrap items-center gap-2">
-                                     <span class=${trade.type === 'sell' ? 'text-red-500' : 'text-green-500'}>${trade.type === 'sell' ? 'SHORT' : 'LONG'}</span>
-                                     <span class="font-extrabold">${trade.symbol}</span>
-                                     <span class="text-xs px-2 py-1 t-blue-badge rounded-md">${trade.shares.toLocaleString()} shares | ${formatR(trade.riskR)}R</span>
-                                     ${hasLivePrice && html`
-                                       <span class=${`text-xs px-2 py-1 rounded-md font-bold ${tradeProfit >= 0 ? 't-green-badge' : 't-red-badge'}`}>
-                                         P&L: ${tradeProfit >= 0 ? '+' : ''}$${tradeProfit.toFixed(2)} (${tradeProfit >= 0 ? '+' : ''}${profitPercent.toFixed(2)}%)
-                                       </span>
-                                     `}
-                                   </div>
-                                   <div class="text-sm t-text-muted grid grid-cols-2 gap-x-6 gap-y-1 mb-2">
-                                     <span>Entry: $${trade.entry.toFixed(2)}</span>
-                                     <span>SL: $${trade.stopLoss.toFixed(2)}</span>
-                                     <span>Target: $${trade.target.toFixed(2)}</span>
-                                     <span>Cost Basis: $${trade.positionValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                     ${hasLivePrice && html`<span class="col-span-2 text-blue-500 font-semibold">Live Quote: $${livePrice.toFixed(2)}</span>`}
-                                   </div>
+                      <!-- Active watchlist container -->
+                      <div class="bg-white dark:bg-neutral-900 rounded-2xl p-0 shadow-sm border border-gray-100 dark:border-neutral-800 mb-6 relative z-0 overflow-hidden">
+                         <div class="p-4 border-b border-gray-100 dark:border-neutral-800 flex justify-between items-center">
+                           <h3 class="font-bold text-gray-800 dark:text-gray-200 text-[1em]">${t.activeTrades}</h3>
+                           <div class="flex items-center space-x-4">
+                             ${portfolioLoadingPrices && html`<span class="text-xs text-blue-500 animate-pulse flex items-center"><${ActivityIcon} class="mr-1" /> Updating quotes...</span>`}
+                             ${trades.length > 0 && html`<button onClick=${() => setConfirmClearAction('trades')} class="text-xs font-bold text-red-500 hover:text-red-600 transition-colors cursor-pointer">Clear All</button>`}
+                           </div>
+                         </div>
+                         
+                         ${trades.length === 0 ? html`
+                           <div class="p-8 text-center text-gray-500 dark:text-neutral-400 text-sm">${t.noTrades}</div>
+                         ` : html`
+                           <div class="divide-y divide-gray-100 dark:divide-neutral-800">
+                             ${trades.map(trade => {
+                               const livePrice = livePrices[trade.symbol];
+                               const hasLivePrice = livePrice !== undefined && livePrice !== null && trade.symbol !== 'UNKNOWN';
+                               const isBuy = trade.type !== 'sell';
+                               const tradeProfit = hasLivePrice ? (isBuy ? (livePrice - trade.entry) : (trade.entry - livePrice)) * trade.shares : 0;
+                               const profitPercent = hasLivePrice ? ((isBuy ? (livePrice - trade.entry) : (trade.entry - livePrice)) / trade.entry) * 100 : 0;
+                               const isEditingNote = editingTradeId === trade.id;
 
-                                   <div class="mt-2 t-gray-bg p-3 rounded-xl border t-border-main text-sm no-swipe">
-                                     <div class="flex justify-between items-center mb-1 text-xs font-semibold t-text-muted uppercase tracking-wider">
-                                       <span>${t.tradingNotes}</span>
-                                       ${isEditingNote ? html`
-                                         <button onClick=${() => handleSaveInlineNote(trade.id)} class="text-blue-500 flex items-center space-x-1 cursor-pointer">
-                                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> <span>${t.saveNote}</span>
-                                         </button>
-                                       ` : html`
-                                         <button onClick=${() => handleStartEditNote(trade)} class="t-text-muted hover:text-blue-500 flex items-center space-x-1 cursor-pointer">
-                                           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg> <span>${t.editNote}</span>
-                                         </button>
+                               return html`
+                                 <div key=${trade.id} class="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors gap-4">
+                                   <div class="flex-1 min-w-0 w-full">
+                                     <div class="font-bold text-lg mb-1 flex flex-wrap items-center gap-2">
+                                       <span class=${trade.type === 'sell' ? 'text-red-500' : 'text-green-500'}>${trade.type === 'sell' ? 'SHORT' : 'LONG'}</span>
+                                       <span class="font-extrabold text-gray-800 dark:text-gray-200">${trade.symbol}</span>
+                                       <span class="text-xs px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-md">${trade.shares.toLocaleString()} shares | ${formatR(trade.riskR)}R</span>
+                                       ${hasLivePrice && html`
+                                         <span class=${`text-xs px-2 py-1 rounded-md font-bold ${tradeProfit >= 0 ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'}`}>
+                                           P&L: ${tradeProfit >= 0 ? '+' : ''}$${tradeProfit.toFixed(2)} (${tradeProfit >= 0 ? '+' : ''}${profitPercent.toFixed(2)}%)
+                                         </span>
                                        `}
                                      </div>
-                                     ${isEditingNote ? html`
-                                       <textarea value=${editTradeNotes} onChange=${(e) => setEditTradeNotes(e.target.value)} rows="2" class="w-full bg-white dark:bg-black border t-border-main px-3 py-2 rounded-lg focus:outline-none" />
-                                     ` : html`
-                                       <p class="t-text-muted italic whitespace-pre-wrap">${trade.rationale || 'No strategy notes recorded.'}</p>
-                                     `}
+                                     <div class="text-sm text-gray-500 dark:text-neutral-400 grid grid-cols-2 gap-x-6 gap-y-1 mb-2">
+                                       <span>Entry: $${trade.entry.toFixed(2)}</span>
+                                       <span>SL: $${trade.stopLoss.toFixed(2)}</span>
+                                       <span>Target: $${trade.target.toFixed(2)}</span>
+                                       <span>Cost Basis: $${trade.positionValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                       ${hasLivePrice && html`<span class="col-span-2 text-blue-500 font-semibold">Live Quote: $${livePrice.toFixed(2)}</span>`}
+                                     </div>
+
+                                     <div class="mt-2 bg-gray-50 dark:bg-neutral-800 p-3 rounded-xl border border-gray-100 dark:border-neutral-800 text-sm no-swipe">
+                                       <div class="flex justify-between items-center mb-1 text-xs font-semibold text-gray-400 dark:text-neutral-500 uppercase tracking-wider">
+                                         <span>${t.tradingNotes}</span>
+                                         ${isEditingNote ? html`
+                                           <button onClick=${() => handleSaveInlineNote(trade.id)} class="text-blue-500 flex items-center space-x-1 cursor-pointer">
+                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> <span>${t.saveNote}</span>
+                                           </button>
+                                         ` : html`
+                                           <button onClick=${() => handleStartEditNote(trade)} class="text-gray-400 hover:text-blue-500 flex items-center space-x-1 cursor-pointer">
+                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg> <span>${t.editNote}</span>
+                                           </button>
+                                         `}
+                                       </div>
+                                       ${isEditingNote ? html`
+                                         <textarea value=${editTradeNotes} onChange=${(e) => setEditTradeNotes(e.target.value)} rows="2" class="w-full bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 px-3 py-2 rounded-lg focus:outline-none" />
+                                       ` : html`
+                                         <p class="text-gray-600 dark:text-neutral-400 italic whitespace-pre-wrap">${trade.rationale || 'No strategy notes recorded.'}</p>
+                                       `}
+                                     </div>
+                                   </div>
+                                   <div class="flex sm:flex-col gap-2 w-full sm:w-auto">
+                                     <button onClick=${() => handleClosePositionClick(trade)} class="flex-1 sm:flex-initial bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-4 py-2 rounded-xl text-sm cursor-pointer">${t.closeTradeBtn}</button>
+                                     <button onClick=${() => removeTrade(trade.id)} class="p-2 text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-950/30 rounded-xl transition-colors flex justify-center items-center cursor-pointer"><${TrashIcon} /></button>
                                    </div>
                                  </div>
-                                 <div class="flex sm:flex-col gap-2 w-full sm:w-auto">
-                                   <button onClick=${() => handleClosePositionClick(trade)} class="flex-1 sm:flex-initial bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-4 py-2 rounded-xl text-sm cursor-pointer">${t.closeTradeBtn}</button>
-                                   <button onClick=${() => removeTrade(trade.id)} class="p-2 text-red-400 hover:text-red-600 t-red-bg rounded-xl transition-colors flex justify-center items-center cursor-pointer"><${TrashIcon} /></button>
-                                 </div>
-                               </div>
-                             `;
-                           })}
-                         </div>
-                       `}
+                               `;
+                             })}
+                           </div>
+                         `}
+                      </div>
                     </div>
 
-                    <div class="t-bg-card rounded-2xl p-6 shadow-sm mb-6 relative z-0">
-                      <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center space-x-2">
-                           <${CloudIcon} class="text-blue-500" />
-                           <h3 class="font-bold text-base">${t.googleDriveTitle}</h3>
-                        </div>
-                        <button onClick=${() => setShowGdriveConfig(!showGdriveConfig)} class="text-sm text-blue-500 hover:text-blue-600 font-medium focus:outline-none no-swipe">
-                          ${showGdriveConfig ? 'Hide Config' : 'Configuration ⚙'}
-                        </button>
-                      </div>
-                      <p class="text-sm t-text-muted mb-5">${t.googleDriveDesc}</p>
-                      
-                      ${showGdriveConfig && html`
-                        <div class="mb-4 space-y-4 no-swipe">
-                          <div class="p-4 t-blue-bg rounded-xl border border-blue-500 border-opacity-30">
-                            <div class="flex justify-between items-center mb-2">
-                              <h4 class="font-bold text-blue-800 dark:text-blue-300 text-xs uppercase">1. Google Apps Script Setup Template</h4>
-                              <button onClick=${handleCopyScript} class="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-md text-xs font-medium transition-colors">
-                                ${copySuccess ? 'Copied!' : 'Copy Script'}
-                              </button>
-                            </div>
-                            <textarea readOnly value=${GAS_TEMPLATE} class="w-full h-40 bg-gray-900 text-green-400 font-mono text-xs p-3 rounded-lg focus:outline-none" />
-                          </div>
-                          <div class="p-4 t-gray-bg rounded-xl border t-border-main">
-                            <h4 class="font-bold text-xs uppercase mb-2">2. Link App</h4>
-                            <label class="block text-xs font-semibold t-text-muted mb-1">${t.googleWebAppUrlLabel}</label>
-                            <div class="flex items-center space-x-2">
-                              <input type="text" value=${gdriveWebAppUrl} onChange=${(e) => setGdriveWebAppUrl(e.target.value)} placeholder="https://script.google.com/macros/s/.../exec" class="w-full t-bg-card border t-border-main px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-blue-500" />
-                              <button onClick=${handleSaveWebAppUrl} class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-bold whitespace-nowrap">Connect</button>
-                            </div>
-                          </div>
-                        </div>
-                      `}
-                      ${syncStatus && html`
-                        <div class="text-center text-xs font-semibold mt-2">
-                          ${syncStatus === 'syncing' && html`<span class="text-blue-500 animate-pulse">Syncing Google Sheets...</span>`}
-                          ${syncStatus === 'synced' && html`<span class="text-green-500">Google Sheets Connection Synced ✓</span>`}
-                          ${syncStatus === 'error' && html`<span class="text-red-500">Connection Error - Verify URL & Deployment</span>`}
-                        </div>
-                      `}
-                    </div>
+                    <${ScrollingCopyrightFooter} />
                   </div>
                 </div>
 
-                <!-- HISTORY PANE -->
-                <div class=${`w-1/3 flex-shrink-0 px-4 pt-6 pb-12 ${activeTab === 'history' || renderedTab === 'history' ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
-                  <div class="max-w-3xl mx-auto">
-                    <div class=${`t-bg-card rounded-2xl p-6 shadow-sm border-l-4 mb-6 ${portfolioStats.realizedPnL >= 0 ? 'border-green-500' : 'border-red-500'}`}>
-                       <span class="block text-xs uppercase font-semibold t-text-muted tracking-wider">${t.realizedPnL}</span>
-                       <div class=${`font-bold text-3xl ${portfolioStats.realizedPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>${portfolioStats.realizedPnL >= 0 ? '+' : ''}$${portfolioStats.realizedPnL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                       <span class=${`inline-block mt-2 text-xs px-3 py-1.5 rounded-full font-bold ${portfolioStats.realizedPnL >= 0 ? 't-green-badge' : 't-red-badge'}`}>
-                         ${portfolio > 0 ? `${portfolioStats.realizedPnL >= 0 ? '+' : ''}${portfolioStats.realizedPnLPercent.toFixed(2)}%` : '0.00%'}
-                       </span>
-                    </div>
+                <!-- HISTORY VIEW -->
+                <div 
+                  ref=${el => scrollPanesRefs.current['history'] = el}
+                  class=${`w-1/3 h-full tab-scroll-pane hide-scrollbar px-4 pt-6 pb-24 ${activeTab === 'history' || renderedTab === 'history' ? 'opacity-100' : 'opacity-0 overflow-hidden'}`}
+                >
+                  <div class="max-w-3xl mx-auto flex flex-col justify-between min-h-full">
+                    <div>
+                      <div class=${`bg-white dark:bg-neutral-900 rounded-2xl p-6 shadow-sm border-l-4 mb-6 ${portfolioStats.realizedPnL >= 0 ? 'border-green-500' : 'border-red-500'}`}>
+                         <span class="block text-xs uppercase font-semibold text-gray-500 dark:text-neutral-400 tracking-wider">${t.realizedPnL}</span>
+                         <div class=${`font-bold text-3xl ${portfolioStats.realizedPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>${portfolioStats.realizedPnL >= 0 ? '+' : ''}$${portfolioStats.realizedPnL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                         <span class=${`inline-block mt-2 text-xs px-3 py-1.5 rounded-full font-bold ${portfolioStats.realizedPnL >= 0 ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-green-300'}`}>
+                           ${portfolio > 0 ? `${portfolioStats.realizedPnL >= 0 ? '+' : ''}${portfolioStats.realizedPnLPercent.toFixed(2)}%` : '0.00%'}
+                         </span>
+                      </div>
 
-                    <div class="t-bg-card rounded-2xl p-0 shadow-sm mb-6 relative z-0 overflow-hidden">
-                       <div class="p-4 border-b t-border-main flex justify-between items-center">
-                         <h3 class="font-bold text-base">${t.historyTab}</h3>
-                         ${history.length > 0 && html`<button onClick=${() => setConfirmClearAction('history')} class="text-xs font-bold text-red-500 hover:text-red-600 transition-colors">Clear All</button>`}
-                       </div>
-
-                       ${history.length === 0 ? html`
-                         <div class="p-8 text-center t-text-muted text-sm">${t.noHistory}</div>
-                       ` : html`
-                         <div class="divide-y t-border-main">
-                           ${history.map(item => {
-                             const isBuy = item.type !== 'sell';
-                             const tradeProfit = (isBuy ? (item.exitPrice - item.entry) : (item.entry - item.exitPrice)) * item.shares;
-                             const profitPercent = ((isBuy ? (item.exitPrice - item.entry) : (item.entry - item.exitPrice)) / item.entry) * 100;
-
-                             return html`
-                               <div key=${item.id} class="p-5 flex items-center justify-between t-hover-bg transition-colors">
-                                 <div class="flex-1 min-w-0 pr-4">
-                                   <div class="font-bold text-lg mb-1 flex flex-wrap items-center gap-2">
-                                     <span class=${item.type === 'sell' ? 'text-red-500' : 'text-green-500'}>${item.type === 'sell' ? 'SHORT' : 'LONG'}</span>
-                                     <span class="font-extrabold">${item.symbol}</span>
-                                     <span class="text-xs px-2 py-1 t-gray-badge rounded-md">${item.shares.toLocaleString()} shares | ${formatR(item.riskR)}R</span>
-                                     <span class=${`text-xs px-2 py-1 rounded-md font-bold ${tradeProfit >= 0 ? 't-green-badge' : 't-red-badge'}`}>Profit: ${tradeProfit >= 0 ? '+' : ''}$${tradeProfit.toFixed(2)} (${tradeProfit >= 0 ? '+' : ''}${profitPercent.toFixed(2)}%)</span>
-                                   </div>
-                                   <div class="text-sm t-text-muted grid grid-cols-2 gap-x-6 gap-y-1">
-                                     <span>Entry: $${item.entry.toFixed(2)}</span>
-                                     <span>Exit: $${item.exitPrice.toFixed(2)}</span>
-                                     <span>SL: $${item.stopLoss.toFixed(2)}</span>
-                                     <span>Closed: ${new Date(item.closedAt).toLocaleDateString()}</span>
-                                   </div>
-                                   ${item.rationale && html`<div class="mt-2 text-xs italic opacity-70">Notes: ${item.rationale}</div>`}
-                                 </div>
-                                 <button onClick=${() => removeHistoryItem(item.id)} class="p-3 text-red-400 hover:text-red-600 t-red-bg rounded-full transition-colors flex-shrink-0"><${TrashIcon} /></button>
-                               </div>
-                             `;
-                           })}
+                      <div class="bg-white dark:bg-neutral-900 rounded-2xl p-0 shadow-sm border border-gray-100 dark:border-neutral-800 mb-6 relative z-0 overflow-hidden">
+                         <div class="p-4 border-b border-gray-100 dark:border-neutral-800 flex justify-between items-center">
+                           <h3 class="font-bold text-base">${t.historyTab}</h3>
+                           <div class="flex items-center space-x-4">
+                             ${history.length > 0 && html`<button onClick=${() => setConfirmClearAction('history')} class="text-xs font-bold text-red-500 hover:text-red-600 transition-colors cursor-pointer">Clear All</button>`}
+                           </div>
                          </div>
-                       `}
+
+                         ${history.length === 0 ? html`
+                           <div class="p-8 text-center text-gray-500 dark:text-neutral-400 text-sm">${t.noHistory}</div>
+                         ` : html`
+                           <div class="divide-y border-gray-100 dark:divide-neutral-800">
+                             ${history.map(item => {
+                               const isBuy = item.type !== 'sell';
+                               const tradeProfit = (isBuy ? (item.exitPrice - item.entry) : (item.entry - item.exitPrice)) * item.shares;
+                               const profitPercent = ((isBuy ? (item.exitPrice - item.entry) : (item.entry - item.exitPrice)) / item.entry) * 100;
+
+                               return html`
+                                 <div key=${item.id} class="p-5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors">
+                                   <div class="flex-1 min-w-0 pr-4">
+                                     <div class="font-bold text-lg mb-1 flex flex-wrap items-center gap-2">
+                                       <span class=${item.type === 'sell' ? 'text-red-500' : 'text-green-500'}>${item.type === 'sell' ? 'SHORT' : 'LONG'}</span>
+                                       <span class="font-extrabold text-gray-800 dark:text-gray-200">${item.symbol}</span>
+                                       <span class="text-xs px-2 py-1 bg-gray-100 dark:bg-neutral-800 rounded-md">${item.shares.toLocaleString()} shares | ${formatR(item.riskR)}R</span>
+                                       <span class=${`text-xs px-2 py-1 rounded-md font-bold ${tradeProfit >= 0 ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-green-300'}`}>Profit: ${tradeProfit >= 0 ? '+' : ''}$${tradeProfit.toFixed(2)} (${tradeProfit >= 0 ? '+' : ''}${profitPercent.toFixed(2)}%)</span>
+                                     </div>
+                                     <div class="text-sm text-gray-500 dark:text-neutral-400 grid grid-cols-2 gap-x-6 gap-y-1">
+                                       <span>Entry: $${item.entry.toFixed(2)}</span>
+                                       <span>Exit: $${item.exitPrice.toFixed(2)}</span>
+                                       <span>SL: $${item.stopLoss.toFixed(2)}</span>
+                                       <span>Closed: ${new Date(item.closedAt).toLocaleDateString()}</span>
+                                     </div>
+                                     ${item.rationale && html`<div class="mt-2 text-xs italic opacity-70 text-gray-500 dark:text-neutral-400">Notes: ${item.rationale}</div>`}
+                                   </div>
+                                   <button onClick=${() => removeHistoryItem(item.id)} class="p-3 text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-950/30 rounded-full transition-colors flex-shrink-0 cursor-pointer"><${TrashIcon} /></button>
+                                 </div>
+                               `;
+                             })}
+                           </div>
+                         `}
+                      </div>
                     </div>
+
+                    <${ScrollingCopyrightFooter} />
                   </div>
                 </div>
 
              </div>
           </main>
 
-          <!-- GLOBAL FOOTER -->
-          <footer class="mt-auto py-8 text-center text-xs t-text-muted flex flex-col space-y-4 px-4 t-bg-main border-t t-border-main">
-            <div class="flex justify-center space-x-6">
-              <button onClick=${() => setActiveModal('how')} class="hover:text-blue-500 font-medium">How to use</button>
-              <button onClick=${() => setActiveModal('about')} class="hover:text-blue-500 font-medium">About</button>
-              <button onClick=${() => setActiveModal('sponsor')} class="hover:text-blue-500 font-medium">Sponsor</button>
-              <button onClick=${() => setActiveModal('contact')} class="hover:text-blue-500 font-medium">Contact Us</button>
+          <!-- iOS STYLE SIDE SHEET: SETTINGS MODAL -->
+          ${showSettingsModal && html`
+            <div 
+              class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-end animate-fade-in"
+              onClick=${() => setShowSettingsModal(false)}
+            >
+              <div 
+                class="bg-white dark:bg-[#1C1C1E] w-full max-w-lg h-full overflow-y-auto p-6 shadow-2xl flex flex-col space-y-6 animate-slide-left no-swipe"
+                onClick=${(e) => e.stopPropagation()}
+              >
+                <!-- Header -->
+                <div class="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-neutral-800">
+                  <h3 class="font-extrabold text-xl flex items-center space-x-2">
+                    <svg class="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span>${t.settings}</span>
+                  </h3>
+                  <button 
+                    onClick=${() => setShowSettingsModal(false)}
+                    class="px-4 py-2 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-gray-300 font-bold rounded-xl text-sm transition-colors cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <!-- 1. Theme Section -->
+                <div class="space-y-2">
+                  <h4 class="font-bold text-xs uppercase tracking-wider text-gray-400 dark:text-neutral-500">${t.theme}</h4>
+                  <div class="flex space-x-2">
+                    <button 
+                      onClick=${() => setTheme('light')}
+                      class=${`flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center space-x-2 border transition-all cursor-pointer ${theme === 'light' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400 hover:bg-gray-100'}`}
+                    >
+                      <${SunIcon} />
+                      <span>Light</span>
+                    </button>
+                    <button 
+                      onClick=${() => setTheme('dark')}
+                      class=${`flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center space-x-2 border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400 hover:bg-gray-100'}`}
+                    >
+                      <${MoonIcon} />
+                      <span>Dark</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 2. Language Section -->
+                <div class="space-y-2">
+                  <h4 class="font-bold text-xs uppercase tracking-wider text-gray-400 dark:text-neutral-500">${t.language}</h4>
+                  <div class="flex space-x-2">
+                    <button 
+                      onClick=${() => setLang('en')}
+                      class=${`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${lang === 'en' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400'}`}
+                    >
+                      English
+                    </button>
+                    <button 
+                      onClick=${() => setLang('zh')}
+                      class=${`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${lang === 'zh' ? 'bg-white dark:bg-neutral-800 text-blue-500 border-blue-500 shadow-sm' : 'bg-gray-50 dark:bg-neutral-800 border-transparent text-gray-500 dark:text-neutral-400'}`}
+                    >
+                      繁體中文
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 3. Font Size Adjustment -->
+                <div class="space-y-2">
+                  <h4 class="font-bold text-xs uppercase tracking-wider text-gray-400 dark:text-neutral-500">${t.fontSize}</h4>
+                  <div class="flex items-center justify-between bg-gray-50 dark:bg-neutral-800 p-2 rounded-xl">
+                    <button 
+                      onClick=${decreaseFont}
+                      disabled=${fontScaleIdx === 0}
+                      class="px-4 py-2 bg-white dark:bg-neutral-700 text-gray-700 dark:text-gray-300 font-bold rounded-lg disabled:opacity-30 transition-all text-xs cursor-pointer"
+                    >
+                      A-
+                    </button>
+                    <span class="text-sm font-bold text-blue-500">Level ${fontScaleIdx + 1}</span>
+                    <button 
+                      onClick=${increaseFont}
+                      disabled=${fontScaleIdx === fontScaleStyles.length - 1}
+                      class="px-4 py-2 bg-white dark:bg-neutral-700 text-gray-700 dark:text-gray-300 font-bold rounded-lg disabled:opacity-30 transition-all text-base cursor-pointer"
+                    >
+                      A+
+                    </button>
+                  </div>
+                </div>
+
+                <!-- --- STREAMING_CHUNK: Rendering rearranged settings accordions... --- -->
+                <!-- Unified Disclosures Section (Reordered sequence: About -> How -> Google Sheets Migration -> Sponsor -> Contact) -->
+                <div class="border-t border-gray-200 dark:border-neutral-800 pt-4 space-y-3">
+                  <h4 class="font-bold text-xs uppercase tracking-wider text-gray-400 dark:text-neutral-500">Guides & Services</h4>
+                  
+                  <!-- [1] ABOUT -->
+                  <div class="border-b border-gray-100 dark:border-neutral-800 pb-2">
+                    <button onClick=${() => toggleDisclosure('about')} class="w-full flex justify-between items-center font-bold text-[0.85em] text-gray-600 dark:text-gray-400 uppercase tracking-wider py-1 focus:outline-none cursor-pointer">
+                      <span>${t.about}</span>
+                      <span>${disclosureOpen['about'] ? '▲' : '▼'}</span>
+                    </button>
+                    ${disclosureOpen['about'] && html`
+                      <div class="mt-2 leading-relaxed text-left text-[0.8em] text-gray-500 dark:text-gray-400 animate-fade-in space-y-2">
+                        <p>Trading Risk Calculator is a premium, client-side trade assistant built specifically to enforce Volatility Contraction Pattern (VCP) risk sizing formulas and preserve capital safety.</p>
+                        <p>© ${new Date().getFullYear()} Trading Risk Calculator. All Rights Reserved.</p>
+                      </div>
+                    `}
+                  </div>
+
+                  <!-- [2] HOW TO USE -->
+                  <div class="border-b border-gray-100 dark:border-neutral-800 pb-2">
+                    <button onClick=${() => toggleDisclosure('how')} class="w-full flex justify-between items-center font-bold text-[0.85em] text-gray-600 dark:text-gray-400 uppercase tracking-wider py-1 focus:outline-none cursor-pointer">
+                      <span>${t.howToUse}</span>
+                      <span>${disclosureOpen['how'] ? '▲' : '▼'}</span>
+                    </button>
+                    ${disclosureOpen['how'] && html`
+                      <div class="mt-2 leading-relaxed space-y-2 text-left text-[0.8em] text-gray-500 dark:text-gray-400 animate-fade-in">
+                        <p>1. Enter your <strong>Total Portfolio Size</strong> and target <strong>Base Risk (1R %)</strong> under the Portfolio settings tab.</p>
+                        <p>2. Go to the Calculator. Enter a <strong>Stock Code</strong> (like TSLA, 0005, or BTC) to auto-fetch pricing and load daily candle snapshots.</p>
+                        <p>3. Choose <strong>Buy/Sell</strong> direction, input Entry Price and customize your Stop-Loss trigger.</p>
+                        <p>4. Set Target Risk (R) slider and Profit reward boundaries. Add position setup to your active watchlist with custom strategy rationale.</p>
+                        <p>5. Close trades inside Portfolio tab once active targets are reached to record realized statistics.</p>
+                      </div>
+                    `}
+                  </div>
+
+                  <!-- [3] GOOGLE SHEETS WEB APP SYNC MIGRATION (Clean flat accordion style matching "how to use") -->
+                  <div class="border-b border-gray-100 dark:border-neutral-800 pb-2">
+                    <button onClick=${() => toggleDisclosure('gdrive')} class="w-full flex justify-between items-center font-bold text-[0.85em] text-gray-600 dark:text-gray-400 uppercase tracking-wider py-1 focus:outline-none cursor-pointer">
+                      <span class="flex items-center space-x-1.5">
+                        <${CloudIcon} class="text-blue-500 w-4 h-4" />
+                        <span>${t.googleDriveTitle}</span>
+                      </span>
+                      <span>${disclosureOpen['gdrive'] ? '▲' : '▼'}</span>
+                    </button>
+                    ${disclosureOpen['gdrive'] && html`
+                      <div class="mt-3 space-y-4 text-left text-[0.8em] animate-fade-in">
+                        <p class="text-xs text-gray-500 dark:text-neutral-400 leading-relaxed">${t.googleDriveDesc}</p>
+                        
+                        <div class="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-500 border-opacity-30 space-y-2">
+                          <div class="flex justify-between items-center">
+                            <span class="text-[0.7rem] font-bold text-blue-800 dark:text-blue-300 uppercase">1. Apps Script Template</span>
+                            <button onClick=${handleCopyScript} class="px-2 py-0.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-[0.65rem] font-bold cursor-pointer">
+                              ${copySuccess ? 'Copied!' : 'Copy'}
+                            </button>
+                          </div>
+                          <textarea readOnly value=${GAS_TEMPLATE} class="w-full h-32 bg-gray-900 text-green-400 font-mono text-[0.65rem] p-2 rounded-lg focus:outline-none" />
+                        </div>
+
+                        <div class="p-3 bg-gray-50 dark:bg-neutral-800 rounded-xl border border-gray-100 dark:border-neutral-800 space-y-2">
+                          <span class="text-[0.7rem] font-bold text-gray-700 dark:text-gray-300 uppercase">2. Deployment Web App URL</span>
+                          <div class="flex items-center space-x-2">
+                            <input 
+                              type="text" 
+                              value=${gdriveWebAppUrl} 
+                              onChange=${(e) => setGdriveWebAppUrl(e.target.value)} 
+                              placeholder="https://script.google.com/macros/s/.../exec" 
+                              class="w-full bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 px-3 py-1.5 rounded-xl text-xs focus:outline-none focus:border-blue-500" 
+                            />
+                            <button onClick=${handleSaveWebAppUrl} class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer">Connect</button>
+                          </div>
+                        </div>
+
+                        <div class="pt-1">
+                          <button onClick=${pullTradesFromGoogleSheets} disabled=${!gdriveWebAppUrl} class="w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl transition-colors text-sm cursor-pointer">
+                            ${t.googleLoginBtn}
+                          </button>
+                        </div>
+
+                        ${syncStatus && html`
+                          <div class="text-center text-xs font-semibold mt-1">
+                            ${syncStatus === 'syncing' && html`<span class="text-blue-500 animate-pulse">Syncing...</span>`}
+                            ${syncStatus === 'synced' && html`<span class="text-green-500 font-bold">Connected successfully ✓</span>`}
+                            ${syncStatus === 'error' && html`<span class="text-red-500">Connection Error - Verify script URL</span>`}
+                          </div>
+                        `}
+                      </div>
+                    `}
+                  </div>
+
+                  <!-- [4] SPONSOR -->
+                  <div class="border-b border-gray-100 dark:border-neutral-800 pb-2">
+                    <button onClick=${() => toggleDisclosure('sponsor')} class="w-full flex justify-between items-center font-bold text-[0.85em] text-gray-600 dark:text-gray-400 uppercase tracking-wider py-1 focus:outline-none cursor-pointer">
+                      <span>${t.sponsor}</span>
+                      <span>${disclosureOpen['sponsor'] ? '▲' : '▼'}</span>
+                    </button>
+                    ${disclosureOpen['sponsor'] && html`
+                      <div class="mt-2 leading-relaxed text-left text-[0.8em] text-gray-500 dark:text-gray-400 animate-fade-in">
+                        <p>Enjoy using this trading application? Support developer server endpoints, updates and real-time fetch protocols by sponsoring our open source roadmap.</p>
+                        <div class="p-4 mt-4 bg-gray-50 dark:bg-neutral-800 rounded-xl border border-dashed border-gray-300 dark:border-neutral-700 text-center">
+                          <p class="italic text-gray-400">[ Payment gateways placeholder ]</p>
+                        </div>
+                      </div>
+                    `}
+                  </div>
+
+                  <!-- [5] CONTACT -->
+                  <div class="pb-2">
+                    <button onClick=${() => toggleDisclosure('contact')} class="w-full flex justify-between items-center font-bold text-[0.85em] text-gray-600 dark:text-gray-400 uppercase tracking-wider py-1 focus:outline-none cursor-pointer">
+                      <span>${t.footerContact}</span>
+                      <span>${disclosureOpen['contact'] ? '▲' : '▼'}</span>
+                    </button>
+                    ${disclosureOpen['contact'] && html`
+                      <div class="mt-2 leading-relaxed text-left text-[0.8em] text-gray-500 dark:text-gray-400 animate-fade-in">
+                        <p>For custom API setups, private sheets bridges, and VCP workflow enquiries, please contact our support desk.</p>
+                        <div class="p-4 mt-4 bg-gray-50 dark:bg-neutral-800 rounded-xl border border-dashed border-gray-300 dark:border-neutral-700 text-center">
+                          <p class="italic text-gray-400">[ Inquiry portals placeholder ]</p>
+                        </div>
+                      </div>
+                    `}
+                  </div>
+                </div>
+
+              </div>
             </div>
-            <p>© 2026 Trading Risk Calculator. All Rights Reserved.</p>
-          </footer>
+          `}
 
           <!-- Clear All Confirmation Modal -->
           ${confirmClearAction && html`
             <div class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick=${() => setConfirmClearAction(null)}>
-               <div class="t-bg-card w-full max-w-sm rounded-2xl p-6 shadow-xl text-center" onClick=${(e) => e.stopPropagation()}>
+               <div class="bg-white dark:bg-neutral-900 w-full max-sm rounded-2xl p-6 shadow-xl text-center shadow-2xl" onClick=${(e) => e.stopPropagation()}>
                   <h3 class="font-extrabold text-lg mb-4 text-red-500">Warning</h3>
-                  <p class="text-sm t-text-muted mb-6">Are you sure you want to permanently clear all ${confirmClearAction === 'trades' ? 'Active Trades' : 'History'}? This cannot be undone.</p>
+                  <p class="text-sm text-gray-500 dark:text-neutral-400 mb-6">Are you sure you want to permanently clear all ${confirmClearAction === 'trades' ? 'Active Trades' : 'History'}? This cannot be undone.</p>
                   <div class="flex gap-3">
-                     <button onClick=${() => setConfirmClearAction(null)} class="flex-1 t-gray-bg t-text-main font-bold py-3 rounded-xl text-sm">Cancel</button>
-                     <button onClick=${executeClearAction} class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl text-sm">Confirm Clear</button>
+                     <button onClick=${() => setConfirmClearAction(null)} class="flex-1 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-gray-300 font-bold py-3 rounded-xl text-sm cursor-pointer">Cancel</button>
+                     <button onClick=${executeClearAction} class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl text-sm cursor-pointer">Confirm Clear</button>
                   </div>
-               </div>
-            </div>
-          `}
-
-          <!-- Footer Information Modals -->
-          ${activeModal && html`
-            <div class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick=${() => setActiveModal(null)}>
-               <div class="t-bg-card w-full max-w-md rounded-2xl p-8 shadow-xl space-y-4" onClick=${(e) => e.stopPropagation()}>
-                  
-                  ${activeModal === 'how' && html`
-                    <h3 class="font-extrabold text-lg mb-2">How to use this app</h3>
-                    <div class="text-sm t-text-muted space-y-2 leading-relaxed">
-                       <p>1. Enter your Total Portfolio Size and set your Base Risk (e.g. 1%) in the Portfolio tab.</p>
-                       <p>2. In the Calculator tab, search a stock ticker (e.g. AAPL) to view the chart.</p>
-                       <p>3. Input your Entry Price and Stop Loss trigger. Set your Risk Tolerance (R) and Risk/Reward bounds.</p>
-                       <p>4. Add active positions to your Portfolio to track live net returns.</p>
-                       <p>5. Configure Google Sheets to backup trades dynamically to the cloud.</p>
-                    </div>
-                  `}
-
-                  ${activeModal === 'about' && html`
-                    <h3 class="font-extrabold text-lg mb-2">About & Copyright</h3>
-                    <div class="text-sm t-text-muted space-y-2 leading-relaxed">
-                       <p>Trading Risk Calculator is a premium, client-side trade assistant built to strictly enforce VCP risk sizing formulas and preserve capital safety.</p>
-                       <p class="font-medium mt-2">© 2026 Trading Risk Calculator. All Rights Reserved.</p>
-                    </div>
-                  `}
-
-                  ${activeModal === 'sponsor' && html`
-                    <h3 class="font-extrabold text-lg mb-2">Sponsor Development</h3>
-                    <div class="text-sm t-text-muted space-y-2 leading-relaxed">
-                       <p>Support the maintenance of real-time server fetch nodes and open-source updates.</p>
-                       <div class="mt-4 p-4 t-gray-bg rounded-lg text-center">
-                          <p class="text-xs font-semibold uppercase tracking-wider mb-2">Sponsorship Details</p>
-                          <p class="italic">(Payment information blank / Pending Integration)</p>
-                       </div>
-                    </div>
-                  `}
-
-                  ${activeModal === 'contact' && html`
-                    <h3 class="font-extrabold text-lg mb-2">Contact Us</h3>
-                    <div class="text-sm t-text-muted space-y-2 leading-relaxed">
-                       <p>Need custom Web App setups or direct workflow integrations?</p>
-                       <div class="mt-4 p-4 t-gray-bg rounded-lg text-center">
-                          <p class="text-xs font-semibold uppercase tracking-wider mb-2">Enquiry details</p>
-                          <p class="italic">(Contact gateway blank / Pending Integration)</p>
-                       </div>
-                    </div>
-                  `}
-
-                  <button onClick=${() => setActiveModal(null)} class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl mt-4">
-                    Close
-                  </button>
                </div>
             </div>
           `}
@@ -1626,23 +2039,23 @@ function doPost(e) {
           <!-- Custom iOS Overlay Sheet Modal for Position Closures -->
           ${closingTrade && html`
             <div class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 flex items-end justify-center pb-safe-bottom" onClick=${() => setClosingTrade(null)}>
-               <div class="t-bg-card w-full max-w-3xl rounded-t-3xl p-8 shadow-xl space-y-5" onClick=${(e) => e.stopPropagation()}>
+               <div class="bg-white dark:bg-neutral-900 w-full max-w-3xl rounded-t-3xl p-8 shadow-xl space-y-5 no-swipe" onClick=${(e) => e.stopPropagation()}>
                   <div class="flex justify-between items-center">
                     <h3 class="font-extrabold text-lg">${t.closeTradeTitle}</h3>
                     <span class="text-lg font-extrabold text-blue-500">${closingTrade.symbol}</span>
                   </div>
 
                   <div>
-                     <label class="block text-sm font-semibold uppercase t-text-muted tracking-wider mb-2">${t.exitPriceLabel}</label>
-                     <div class="relative no-swipe">
-                       <span class="absolute left-0 top-2 t-text-muted">$</span>
-                       <input type="number" step="any" inputMode="decimal" value=${exitPriceInput} onChange=${(e) => setExitPriceInput(e.target.value)} class="t-input font-bold text-xl pl-5" />
+                     <label class="block text-sm font-semibold uppercase text-gray-400 dark:text-neutral-500 tracking-wider mb-2">${t.exitPriceLabel}</label>
+                     <div class="relative">
+                       <span class="absolute left-0 top-2 text-gray-400">$</span>
+                       <input type="number" step="any" inputMode="decimal" value=${exitPriceInput} onChange=${(e) => setExitPriceInput(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 font-bold text-xl pl-5" />
                      </div>
                   </div>
 
                   <div class="flex gap-3 pt-2">
-                     <button onClick=${() => setClosingTrade(null)} class="flex-1 t-gray-bg t-text-main font-bold py-3 rounded-xl text-sm">${t.cancelBtn}</button>
-                     <button onClick=${handleConfirmPositionClose} class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl text-sm">${t.confirmCloseBtn}</button>
+                     <button onClick=${() => setClosingTrade(null)} class="flex-1 bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300 font-bold py-3 rounded-xl text-sm cursor-pointer">${t.cancelBtn}</button>
+                     <button onClick=${handleConfirmPositionClose} class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl text-sm cursor-pointer">${t.confirmCloseBtn}</button>
                   </div>
                </div>
             </div>

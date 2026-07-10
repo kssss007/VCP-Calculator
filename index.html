@@ -336,7 +336,30 @@ function doPost(e) {
         copyScript: "Copy Script Template",
         footerContact: "Contact & Feedbacks Support",
         priceLookupError: "Live price lookups restricted. Please enter the entry price manually.",
-        manualUpdate: "Update"
+        manualUpdate: "Update",
+        vcpCalc: "VCP Position Calc",
+        annualCalc: "Annualized Return",
+        startDate: "Start Date",
+        endDate: "End Date",
+        durationDays: "Duration (Days)",
+        calcMode: "Input Mode",
+        returnPercentLabel: "Short-term Return Rate %",
+        initialPrincipal: "Initial Principal",
+        profitAmount: "Profit Amount",
+        yearlyBaseLabel: "Yearly Day Base",
+        naturalDays: "365 Natural Days (Crypto/Forex)",
+        tradingDays: "252 Trading Days (Stocks)",
+        compoundedAR: "Compounded CAGR",
+        simpleAR: "Simple Annualized Return",
+        totalDuration: "Total Days",
+        timeFactor: "Time Factor",
+        invalidDuration: "Duration must be greater than 0 days.",
+        invalidPrincipal: "Principal must be greater than 0.",
+        extremeValueWarning: "Short-term high return creates massive compounded curves. Refer to simple annualized return.",
+        durationModeLabel: "Duration Setup",
+        durationModeDate: "Specify End Date",
+        durationModeDays: "Specify Days Count",
+        annualOutcomeTitle: "Annualized Performance Breakdown"
       },
       zh: {
         title: "交易風險管理",
@@ -433,7 +456,30 @@ function doPost(e) {
         copyScript: "複製指令碼模版",
         footerContact: "問題回饋與聯絡支持",
         priceLookupError: "實時報價功能受限，請手動輸入買入價。",
-        manualUpdate: "手動更新"
+        manualUpdate: "手動更新",
+        vcpCalc: "VCP 倉位計算",
+        annualCalc: "年化報酬轉換",
+        startDate: "開始日期",
+        endDate: "結束日期",
+        durationDays: "持有天數 (天)",
+        calcMode: "輸入模式",
+        returnPercentLabel: "短期報酬率 %",
+        initialPrincipal: "初始本金",
+        profitAmount: "獲利金額",
+        yearlyBaseLabel: "年度天數基準",
+        naturalDays: "365 天 (自然日 - 加密貨幣/外匯)",
+        tradingDays: "252 天 (交易日 - 美股/台股)",
+        compoundedAR: "複利年化報酬率 (CAGR)",
+        simpleAR: "單利年化報酬率",
+        totalDuration: "總持有天數",
+        timeFactor: "時間放大倍數",
+        invalidDuration: "天數必須大於 0 天。",
+        invalidPrincipal: "本金必須大於 0。",
+        extremeValueWarning: "極短期報酬在複利效應下易產生天文數字，建議參考單利年化結果。",
+        durationModeLabel: "持有期指定方式",
+        durationModeDate: "指定結束日期",
+        durationModeDays: "直接輸入持有天數",
+        annualOutcomeTitle: "年化報酬數據剖析"
       }
     };
 
@@ -459,6 +505,42 @@ function doPost(e) {
       const num = parseFloat(val);
       if (isNaN(num)) return '';
       return Number.isInteger(num) ? num.toString() : num.toFixed(2);
+    };
+
+    // Helper functions for safe local date manipulations
+    const getTodayStr = () => {
+      const d = new Date();
+      const month = '' + (d.getMonth() + 1);
+      const day = '' + d.getDate();
+      const year = d.getFullYear();
+      return [year, month.padStart(2, '0'), day.padStart(2, '0')].join('-');
+    };
+
+    const getFutureDateStr = (days) => {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      const month = '' + (d.getMonth() + 1);
+      const day = '' + d.getDate();
+      const year = d.getFullYear();
+      return [year, month.padStart(2, '0'), day.padStart(2, '0')].join('-');
+    };
+
+    const getDaysDiff = (start, end) => {
+      const s = new Date(start);
+      const e = new Date(end);
+      const diffTime = e - s;
+      if (isNaN(diffTime)) return 0;
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    };
+
+    const addDays = (dateStr, days) => {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '';
+      date.setDate(date.getDate() + parseInt(days || 0));
+      const month = '' + (date.getMonth() + 1);
+      const day = '' + date.getDate();
+      const year = date.getFullYear();
+      return [year, month.padStart(2, '0'), day.padStart(2, '0')].join('-');
     };
 
     // SVGs & Icons
@@ -493,6 +575,9 @@ function doPost(e) {
       const activeTabIndex = tabsOrder.indexOf(activeTab);
       
       const [renderedTab, setRenderedTab] = useState(activeTab);
+
+      // Option A Sub-Tab Sizer inside "Calculator" tab
+      const [calcSubTab, setCalcSubTab] = useState('vcp'); // 'vcp' or 'annual'
 
       const ribbonContainerRef = useRef(null);
       const tabButtonRefs = useRef({});
@@ -537,6 +622,17 @@ function doPost(e) {
       const [firstBetMultiplier, setFirstBetMultiplier] = useState(0.5); 
       const [riskR, setRiskR] = useState(1.0); 
       const [interval, setInterval] = useState('D');
+
+      // --- Annualized Calculator States ---
+      const [annualStartDate, setAnnualStartDate] = useState(getTodayStr());
+      const [annualEndDate, setAnnualEndDate] = useState(getFutureDateStr(30));
+      const [annualDuration, setAnnualDuration] = useState('30');
+      const [annualDurationMode, setAnnualDurationMode] = useState('date'); // 'date' (By End Date) or 'days' (By Days Count)
+      const [annualInputMode, setAnnualInputMode] = useState('percent'); // 'percent' or 'amount'
+      const [annualReturnPercent, setAnnualReturnPercent] = useState('10');
+      const [annualInitialPrincipal, setAnnualInitialPrincipal] = useState('10,000');
+      const [annualProfitAmount, setAnnualProfitAmount] = useState('1,000');
+      const [annualYearlyBase, setAnnualYearlyBase] = useState(365); // 365 or 252
 
       const [dragOffset, setDragOffset] = useState(0);
       const [isDragging, setIsDragging] = useState(false);
@@ -628,10 +724,7 @@ function doPost(e) {
         let parsedSymbol = symbol.trim().toUpperCase();
         if (!parsedSymbol) return null;
 
-        // Clean query text (for cryptos e.g. BTC, HK stocks e.g. 0005, US stocks e.g. TSLA)
         const searchUrl = `https://symbol-search.tradingview.com/symbol_search/?text=${encodeURIComponent(parsedSymbol)}`;
-        
-        // Stack of high-availability proxy endpoints to bypass CORS limits smoothly
         const proxies = [
           `https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`,
           `https://api.allorigins.win/raw?url=${encodeURIComponent(searchUrl)}`,
@@ -652,7 +745,6 @@ function doPost(e) {
               }
               
               if (Array.isArray(data) && data.length > 0) {
-                // Find symbol exact match
                 bestMatch = data.find(item => item.symbol.toUpperCase() === parsedSymbol) || data[0];
                 if (bestMatch) break;
               }
@@ -667,14 +759,11 @@ function doPost(e) {
           return null;
         }
 
-        // Extract exchange and symbol prefix (e.g. NASDAQ:AAPL)
         const exchange = (bestMatch.exchange || bestMatch.prefix || "").toUpperCase();
         const symbolCode = (bestMatch.symbol || "").toUpperCase();
         if (!exchange || !symbolCode) return null;
 
         const ticker = `${exchange}:${symbolCode}`;
-
-        // Build the payload for scanner.tradingview.com/global/scan
         const scannerUrl = `https://scanner.tradingview.com/global/scan`;
         const payload = {
           symbols: {
@@ -684,7 +773,6 @@ function doPost(e) {
           columns: ["close"]
         };
 
-        // Try direct first
         try {
           const res = await fetch(scannerUrl, {
             method: "POST",
@@ -700,7 +788,6 @@ function doPost(e) {
           console.warn("Direct scanner fetch blocked, falling back to proxy scanner request...");
         }
 
-        // Try proxy POST request with fully transparent CORS bypass
         try {
           const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(scannerUrl)}`;
           const res = await fetch(proxyUrl, {
@@ -796,176 +883,51 @@ function doPost(e) {
         }
       };
 
-      useEffect(() => {
-        const cached = localStorage.getItem('vcp_state');
-        if (cached) {
-          try {
-            const data = JSON.parse(cached);
-            if (data.portfolioInput) setPortfolioInput(data.portfolioInput);
-            if (data.rPercent) setRPercent(data.rPercent);
-            if (data.trades && Array.isArray(data.trades)) setTrades(data.trades);
-            if (data.history && Array.isArray(data.history)) setHistory(data.history);
-          } catch (e) {
-            console.warn("Cached recovery failed", e);
+      // --- GA4 Side-Effects & Safe Event Pushers ---
+      const trackGAEvent = (eventName, params = {}) => {
+        try {
+          if (typeof window.gtag === 'function') {
+            window.gtag('event', eventName, params);
           }
+        } catch (e) {
+          console.warn(`GA4 event ${eventName} dispatch failed cleanly: ad-blocker detected.`);
         }
-      }, []);
-
-      const saveLocalData = (pIn, rPer, trds, hist) => {
-        const payload = JSON.stringify({ portfolioInput: pIn, rPercent: rPer, trades: trds, history: hist });
-        localStorage.setItem('vcp_state', payload);
       };
 
-      const triggerSave = (newPortfolio, newRPercent, newTrades, newHistory) => {
-        saveLocalData(newPortfolio, newRPercent, newTrades, newHistory);
+      // Bidirectional date & duration sync handlers for Annual Calculator
+      const handleAnnualStartDateChange = (val) => {
+        setAnnualStartDate(val);
+        if (annualDurationMode === 'date') {
+          const d = getDaysDiff(val, annualEndDate);
+          setAnnualDuration(d.toString());
+        } else {
+          const end = addDays(val, annualDuration);
+          setAnnualEndDate(end);
+        }
       };
 
-      const updatePortfolioValue = (newValue) => {
-        setPortfolioInput(newValue);
-        triggerSave(newValue, rPercent, trades, history);
+      const handleAnnualEndDateChange = (val) => {
+        setAnnualEndDate(val);
+        const d = getDaysDiff(annualStartDate, val);
+        setAnnualDuration(d.toString());
       };
 
-      const updateRPercentValue = (newValue) => {
-        setRPercent(newValue);
-        triggerSave(portfolioInput, newValue, trades, history);
+      const handleAnnualDurationChange = (val) => {
+        setAnnualDuration(val);
+        const days = parseInt(val) || 0;
+        const end = addDays(annualStartDate, days);
+        setAnnualEndDate(end);
       };
 
-      const updateTradesList = (newTrades) => {
-        const safeTrades = Array.isArray(newTrades) ? newTrades : [];
-        setTrades(safeTrades);
-        triggerSave(portfolioInput, rPercent, safeTrades, history);
-      };
-
-      const updateHistoryList = (newHistory) => {
-        const safeHistory = Array.isArray(newHistory) ? newHistory : [];
-        setHistory(safeHistory);
-        triggerSave(portfolioInput, rPercent, trades, safeHistory);
-      };
-
+      // Corrected sequence to eliminate any TDZ (Temporal Dead Zone) ReferenceErrors
       const portfolio = useMemo(() => {
         const num = parseFloat(parseCommas(portfolioInput));
         return isNaN(num) ? 0 : num;
       }, [portfolioInput]);
 
-      const handlePortfolioInputChange = (e) => {
-        const raw = parseCommas(e.target.value);
-        if (raw === '' || !isNaN(raw)) {
-          updatePortfolioValue(formatCommas(raw));
-        }
-      };
-
-      useEffect(() => {
-        if (theme === 'dark') document.documentElement.classList.add('dark');
-        else document.documentElement.classList.remove('dark');
-      }, [theme]);
-
-      useEffect(() => {
-        const timer = setTimeout(() => setDebouncedStockCode(stockCode.trim().toUpperCase()), 800);
-        return () => clearTimeout(timer);
-      }, [stockCode]);
-
-      useEffect(() => {
-        const loadCalcPrice = async () => {
-          if (!debouncedStockCode) return;
-          setIsFetchingPrice(true);
-          setPriceFetchFailed(false);
-          const price = await fetchPriceForSymbol(debouncedStockCode);
-          if (price) {
-            setEntry(price.toFixed(2));
-          } else {
-            setPriceFetchFailed(true);
-          }
-          setIsFetchingPrice(false);
-        };
-        loadCalcPrice();
-      }, [debouncedStockCode]);
-
-      // Handle TradingView Script Loading and Widget Rendering
-      useEffect(() => {
-        if (!debouncedStockCode) return;
-
-        const containerId = "tv_chart_container";
-        const widgetId = "tradingview_widget_script";
-
-        const initWidget = () => {
-          if (window.TradingView) {
-            new window.TradingView.widget({
-              autosize: true,
-              symbol: debouncedStockCode,
-              interval: interval,
-              timezone: "Etc/UTC",
-              theme: theme === 'dark' ? "dark" : "light",
-              style: "1",
-              locale: lang === 'zh' ? "zh_TW" : "en",
-              toolbar_bg: theme === 'dark' ? "#131722" : "#f1f3f6",
-              enable_publishing: false,
-              hide_side_toolbar: false,
-              allow_symbol_change: true,
-              container_id: containerId
-            });
-          }
-        };
-
-        if (!document.getElementById(widgetId)) {
-          const script = document.createElement('script');
-          script.id = widgetId;
-          script.src = 'https://s3.tradingview.com/tv.js';
-          script.onload = initWidget;
-          document.head.appendChild(script);
-        } else {
-          const timer = setTimeout(initWidget, 100);
-          return () => clearTimeout(timer);
-        }
-      }, [debouncedStockCode, interval, theme, lang]);
-
-      const refreshPortfolioPrices = async () => {
-        if (!trades || trades.length === 0) return;
-        setPortfolioLoadingPrices(true);
-        const uniqueSymbols = [...new Set(trades.map(t => t.symbol))];
-        const newPrices = { ...livePrices };
-
-        for (const sym of uniqueSymbols) {
-          if (sym === 'UNKNOWN') continue;
-          const price = await fetchPriceForSymbol(sym);
-          if (price) newPrices[sym] = price;
-        }
-        setLivePrices(newPrices);
-        setPortfolioLoadingPrices(false);
-      };
-
-      useEffect(() => {
-        if (activeTab === 'port' && trades.length > 0) {
-          refreshPortfolioPrices();
-          const timer = window.setInterval(refreshPortfolioPrices, 30000); 
-          return () => clearInterval(timer);
-        }
-      }, [activeTab, trades]);
-
-      const handleTouchStart = (e) => {
-        if (e.target.closest('input[type="range"]') || e.target.closest('#tv_chart_container') || e.target.closest('.no-swipe')) {
-          return;
-        }
-        touchStartX.current = e.touches[0].clientX;
-        setIsDragging(true);
-      };
-
-      const handleTouchMove = (e) => {
-        if (!isDragging) return;
-        touchCurrentX.current = e.touches[0].clientX;
-        const diff = touchCurrentX.current - touchStartX.current;
-        setDragOffset(diff);
-      };
-
-      const handleTouchEnd = () => {
-        if (!isDragging) return;
-        setIsDragging(false);
-        const threshold = window.innerWidth / 4; 
-        if (dragOffset > threshold && activeTabIndex > 0) setActiveTab(tabsOrder[activeTabIndex - 1]); 
-        else if (dragOffset < -threshold && activeTabIndex < tabsOrder.length - 1) setActiveTab(tabsOrder[activeTabIndex + 1]); 
-        setDragOffset(0);
-      };
-
-      const oneR = portfolio * (parseFloat(rPercent) || 1) / 100;
+      const oneR = useMemo(() => {
+        return portfolio * (parseFloat(rPercent) || 1) / 100;
+      }, [portfolio, rPercent]);
 
       const slErrorMsg = useMemo(() => {
         const ePrice = parseFloat(entry) || 0;
@@ -997,7 +959,6 @@ function doPost(e) {
         }
       }, [entry, slValue, slMode, tradeType, slErrorMsg]);
 
-      // Can calculate targets & percentage changes even without Stop Loss configuration
       const rrRatioComputed = useMemo(() => {
         const ePrice = parseFloat(entry) || 0;
         const val = parseFloat(rrValue) || 0;
@@ -1053,6 +1014,216 @@ function doPost(e) {
           scaleRemainingCap: (positionSize - scaleFirstShares) * ePrice
         };
       }, [portfolio, rPercent, entry, slCalc, riskR, rrRatioComputed, oneR, firstBetMultiplier]);
+
+      useEffect(() => {
+        if (calculations.isValid && debouncedStockCode) {
+          trackGAEvent('vcp_calculated', { 'event_category': 'engagement' });
+        }
+      }, [calculations.isValid, debouncedStockCode]);
+
+      useEffect(() => {
+        const cached = localStorage.getItem('vcp_state');
+        if (cached) {
+          try {
+            const data = JSON.parse(cached);
+            if (data.portfolioInput) setPortfolioInput(data.portfolioInput);
+            if (data.rPercent) setRPercent(data.rPercent);
+            if (data.trades && Array.isArray(data.trades)) setTrades(data.trades);
+            if (data.history && Array.isArray(data.history)) setHistory(data.history);
+          } catch (e) {
+            console.warn("Cached recovery failed", e);
+          }
+        }
+      }, []);
+
+      const saveLocalData = (pIn, rPer, trds, hist) => {
+        const payload = JSON.stringify({ portfolioInput: pIn, rPercent: rPer, trades: trds, history: hist });
+        localStorage.setItem('vcp_state', payload);
+      };
+
+      const triggerSave = (newPortfolio, newRPercent, newTrades, newHistory) => {
+        saveLocalData(newPortfolio, newRPercent, newTrades, newHistory);
+      };
+
+      const updatePortfolioValue = (newValue) => {
+        setPortfolioInput(newValue);
+        triggerSave(newValue, rPercent, trades, history);
+      };
+
+      const updateRPercentValue = (newValue) => {
+        setRPercent(newValue);
+        triggerSave(portfolioInput, newValue, trades, history);
+      };
+
+      const updateTradesList = (newTrades) => {
+        const safeTrades = Array.isArray(newTrades) ? newTrades : [];
+        setTrades(safeTrades);
+        triggerSave(portfolioInput, rPercent, safeTrades, history);
+      };
+
+      const updateHistoryList = (newHistory) => {
+        const safeHistory = Array.isArray(newHistory) ? newHistory : [];
+        setHistory(safeHistory);
+        triggerSave(portfolioInput, rPercent, trades, safeHistory);
+      };
+
+      const handlePortfolioInputChange = (e) => {
+        const raw = parseCommas(e.target.value);
+        if (raw === '' || !isNaN(raw)) {
+          updatePortfolioValue(formatCommas(raw));
+        }
+      };
+
+      useEffect(() => {
+        if (theme === 'dark') document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
+      }, [theme]);
+
+      useEffect(() => {
+        const timer = setTimeout(() => setDebouncedStockCode(stockCode.trim().toUpperCase()), 800);
+        return () => clearTimeout(timer);
+      }, [stockCode]);
+
+      useEffect(() => {
+        const loadCalcPrice = async () => {
+          if (!debouncedStockCode) return;
+          setIsFetchingPrice(true);
+          setPriceFetchFailed(false);
+          const price = await fetchPriceForSymbol(debouncedStockCode);
+          if (price) {
+            setEntry(price.toFixed(2));
+          } else {
+            setPriceFetchFailed(true);
+          }
+          setIsFetchingPrice(false);
+        };
+        loadCalcPrice();
+      }, [debouncedStockCode]);
+
+      // Handle TradingView Script Loading and Widget Rendering
+      useEffect(() => {
+        if (!debouncedStockCode || calcSubTab !== 'vcp') return;
+
+        const containerId = "tv_chart_container";
+        const widgetId = "tradingview_widget_script";
+
+        const initWidget = () => {
+          if (window.TradingView) {
+            new window.TradingView.widget({
+              autosize: true,
+              symbol: debouncedStockCode,
+              interval: interval,
+              timezone: "Etc/UTC",
+              theme: theme === 'dark' ? "dark" : "light",
+              style: "1",
+              locale: lang === 'zh' ? "zh_TW" : "en",
+              toolbar_bg: theme === 'dark' ? "#131722" : "#f1f3f6",
+              enable_publishing: false,
+              hide_side_toolbar: false,
+              allow_symbol_change: true,
+              container_id: containerId
+            });
+          }
+        };
+
+        if (!document.getElementById(widgetId)) {
+          const script = document.createElement('script');
+          script.id = widgetId;
+          script.src = 'https://s3.tradingview.com/tv.js';
+          script.onload = initWidget;
+          document.head.appendChild(script);
+        } else {
+          const timer = setTimeout(initWidget, 100);
+          return () => clearTimeout(timer);
+        }
+      }, [debouncedStockCode, interval, theme, lang, calcSubTab]);
+
+      const refreshPortfolioPrices = async () => {
+        if (!trades || trades.length === 0) return;
+        setPortfolioLoadingPrices(true);
+        const uniqueSymbols = [...new Set(trades.map(t => t.symbol))];
+        const newPrices = { ...livePrices };
+
+        for (const sym of uniqueSymbols) {
+          if (sym === 'UNKNOWN') continue;
+          const price = await fetchPriceForSymbol(sym);
+          if (price) newPrices[sym] = price;
+        }
+        setLivePrices(newPrices);
+        setPortfolioLoadingPrices(false);
+      };
+
+      useEffect(() => {
+        if (activeTab === 'port' && trades.length > 0) {
+          refreshPortfolioPrices();
+          const timer = window.setInterval(refreshPortfolioPrices, 30000); 
+          return () => clearInterval(timer);
+        }
+      }, [activeTab, trades]);
+
+      const handleTouchStart = (e) => {
+        if (e.target.closest('input[type="range"]') || e.target.closest('#tv_chart_container') || e.target.closest('.no-swipe')) {
+          return;
+        }
+        touchStartX.current = e.touches[0].clientX;
+        setIsDragging(true);
+      };
+
+      const handleTouchMove = (e) => {
+        if (!isDragging) return;
+        touchCurrentX.current = e.touches[0].clientX;
+        const diff = touchCurrentX.current - touchStartX.current;
+        setDragOffset(diff);
+      };
+
+      const handleTouchEnd = () => {
+        if (!isDragging) return;
+        setIsDragging(false);
+        const threshold = window.innerWidth / 4; 
+        if (dragOffset > threshold && activeTabIndex > 0) setActiveTab(tabsOrder[activeTabIndex - 1]); 
+        else if (dragOffset < -threshold && activeTabIndex < tabsOrder.length - 1) setActiveTab(tabsOrder[activeTabIndex + 1]); 
+        setDragOffset(0);
+      };
+
+      // Computed Results for Annualized Calculator
+      const annualCalculations = useMemo(() => {
+        const d = parseInt(annualDuration) || 0;
+        if (d <= 0) {
+          return { isValid: false, errorMsg: t.invalidDuration };
+        }
+
+        let rSt = 0;
+        if (annualInputMode === 'percent') {
+          rSt = (parseFloat(annualReturnPercent) || 0) / 100;
+        } else {
+          const principal = parseFloat(parseCommas(annualInitialPrincipal)) || 0;
+          const profit = parseFloat(parseCommas(annualProfitAmount)) || 0;
+          if (principal <= 0) {
+            return { isValid: false, errorMsg: t.invalidPrincipal };
+          }
+          rSt = profit / principal;
+        }
+
+        // Compounded AR (CAGR)
+        const compoundedRate = (Math.pow(1 + rSt, annualYearlyBase / d) - 1) * 100;
+
+        // Simple AR
+        const simpleRate = rSt * (annualYearlyBase / d) * 100;
+
+        const timeFactor = annualYearlyBase / d;
+        const shortTermPercent = rSt * 100;
+        const isExtreme = compoundedRate > 10000;
+
+        return {
+          isValid: true,
+          duration: d,
+          shortTermPercent,
+          compoundedRate,
+          simpleRate,
+          timeFactor,
+          isExtreme
+        };
+      }, [annualDuration, annualInputMode, annualReturnPercent, annualInitialPrincipal, annualProfitAmount, annualYearlyBase, t]);
 
       const handleToggleSLMode = (newMode) => {
         if (newMode === slMode) return;
@@ -1141,6 +1312,9 @@ function doPost(e) {
           positionValue: calculations.positionValue,
           rationale: rationale.trim()
         });
+
+        // Trigger GA4 Save to Sheets Trackers safely
+        trackGAEvent('vcp_saved_to_cloud', { 'event_category': 'engagement' });
 
         setRationale(''); 
         setActiveTab('port');
@@ -1321,263 +1495,438 @@ function doPost(e) {
                 >
                   <div class="max-w-3xl mx-auto flex flex-col justify-between min-h-full">
                     <div>
-                      <div class="flex justify-between items-center mb-4 px-2 text-sm text-gray-500 dark:text-gray-400">
-                        <span>${t.portfolioSize}: <strong class="text-gray-800 dark:text-gray-200">$${portfolio.toLocaleString()}</strong></span>
-                        <span class="text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-                          ${gdriveWebAppUrl ? t.cloudSyncing : t.localMode}
-                        </span>
-                        <span>1R = <strong class="text-blue-500">$${oneR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong></span>
+                      <!-- Sub-toggle Segment (Option A layout) for Calculator view selection -->
+                      <div class="flex bg-gray-150 dark:bg-neutral-800 p-0.5 rounded-xl shadow-inner text-xs mb-6 no-swipe">
+                        <button onClick=${() => setCalcSubTab('vcp')} class=${`flex-1 py-2 rounded-lg font-bold transition-all text-center cursor-pointer ${calcSubTab === 'vcp' ? 'bg-white dark:bg-neutral-700 text-blue-500 shadow' : 'text-gray-500 hover:text-gray-750 dark:text-neutral-400'}`}>
+                          ${t.vcpCalc}
+                        </button>
+                        <button onClick=${() => setCalcSubTab('annual')} class=${`flex-1 py-2 rounded-lg font-bold transition-all text-center cursor-pointer ${calcSubTab === 'annual' ? 'bg-white dark:bg-neutral-700 text-blue-500 shadow' : 'text-gray-500 hover:text-gray-750 dark:text-neutral-400'}`}>
+                          ${t.annualCalc}
+                        </button>
                       </div>
 
-                      <!-- Input Settings Card -->
-                      <div class=${iOSCardClass}>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                          <div class="col-span-1 md:col-span-2">
-                            <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider flex justify-between">
-                              ${t.stockCode}
-                              ${isFetchingPrice && html`<span class="text-blue-400 normal-case text-xs flex items-center"><${ActivityIcon} class="mr-1 animate-pulse" /> ${t.fetchingPrice}</span>`}
-                            </label>
-                            <div class="relative no-swipe">
-                              <input type="text" value=${stockCode} onChange=${(e) => setStockCode(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 font-bold uppercase" placeholder="AAPL" autoCapitalize="characters" autoComplete="off" spellCheck="false" />
-                              <${ChartIcon} class="absolute right-2 top-2 text-gray-400 pointer-events-none" />
-                            </div>
-                            ${priceFetchFailed && html`
-                              <div class="mt-2 text-xs text-red-500 font-medium flex items-center">
-                                <${AlertIcon} class="mr-1.5" /> ${t.priceLookupError}
-                              </div>
-                            `}
+                      <!-- Sub-tab conditional branch: [VCP POSITION CALC] vs [ANNUALIZED RETURN CALC] -->
+                      ${calcSubTab === 'vcp' ? html`
+                        <!-- MAIN VCP CALCULATOR INTERFACE -->
+                        <div>
+                          <div class="flex justify-between items-center mb-4 px-2 text-sm text-gray-500 dark:text-gray-400">
+                            <span>${t.portfolioSize}: <strong class="text-gray-800 dark:text-gray-200">$${portfolio.toLocaleString()}</strong></span>
+                            <span class="text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                              ${gdriveWebAppUrl ? t.cloudSyncing : t.localMode}
+                            </span>
+                            <span>1R = <strong class="text-blue-500">$${oneR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong></span>
                           </div>
 
-                          <!-- Entry Price Card Input -->
-                          <div class="flex flex-col justify-between h-full">
-                            <div class="flex justify-between items-center mb-2 h-7">
-                              <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.entryPrice}</label>
-                              <div class="flex bg-gray-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs no-swipe">
-                                <button type="button" onClick=${() => setTradeType('buy')} class=${`px-2 py-1 rounded-md font-medium transition-colors ${tradeType === 'buy' ? 'bg-green-500 text-white shadow-sm' : 'text-gray-500'}`}>${t.directionBuy}</button>
-                                <button type="button" onClick=${() => setTradeType('sell')} class=${`px-2 py-1 rounded-md font-medium transition-colors ${tradeType === 'sell' ? 'bg-red-500 text-white shadow-sm' : 'text-gray-500'}`}>${t.directionSell}</button>
-                              </div>
-                            </div>
-                            <div class="relative no-swipe">
-                              <span class="absolute left-0 top-2 text-gray-400 font-medium">$</span>
-                              <input type="number" step="any" inputMode="decimal" value=${entry} onChange=${(e) => setEntry(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 pl-5" placeholder="150.00" />
-                            </div>
-                          </div>
-
-                          <!-- Stop Loss Mode & Card Input -->
-                          <div class="flex flex-col justify-between h-full">
-                            <div class="flex justify-between items-center mb-2 h-7">
-                              <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.stopLoss}</label>
-                              <div class="flex bg-gray-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs no-swipe">
-                                <button type="button" onClick=${() => handleToggleSLMode('price')} class=${getStopLossBtnClass('price')}>${t.stopLossModePrice}</button>
-                                <button type="button" onClick=${() => handleToggleSLMode('percent')} class=${getStopLossBtnClass('percent')}>${t.stopLossModePercent}</button>
-                              </div>
-                            </div>
-                            <div class="relative no-swipe">
-                              <span class="absolute left-0 top-2 text-gray-400 font-medium">${slMode === 'price' ? '$' : '%'}</span>
-                              <input type="number" step="any" inputMode="decimal" value=${slValue} onChange=${(e) => setSlValue(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 pl-5" placeholder=${slMode === 'price' ? (tradeType === 'buy' ? '140.00' : '160.00') : '5.00'} />
-                            </div>
-                            ${slErrorMsg ? html`
-                              <div class="mt-2 text-xs text-red-500 font-medium"><${AlertIcon} class="inline mr-1 mb-1" /> ${slErrorMsg}</div>
-                            ` : (slCalc.isValid && html`
-                              <div class="mt-2 text-xs text-gray-400 dark:text-neutral-500"><span>${slMode === 'price' ? html`Calculated Percentage: <strong>-${slCalc.percent.toFixed(2)}%</strong>` : html`Calculated Price: <strong>$${slCalc.price.toFixed(2)}</strong>`}</span></div>
-                            `)}
-                          </div>
-
-                          <!-- Adjustable Target Risk Drag Bar with Interactive Question Mark -->
-                          <div class="col-span-1 md:col-span-2 mt-4">
-                            <div class="flex justify-between items-end mb-2">
-                              <div class="flex flex-col">
-                                <div class="flex items-center space-x-2">
-                                  <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.targetRisk}</label>
-                                  <button onClick=${() => setShowTargetRiskHelp(!showTargetRiskHelp)} class="text-gray-400 hover:text-blue-500 transition-colors no-swipe cursor-pointer">
-                                    <${HelpCircleIcon} />
-                                  </button>
+                          <!-- Input Settings Card -->
+                          <div class=${iOSCardClass}>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                              <div class="col-span-1 md:col-span-2">
+                                <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider flex justify-between">
+                                  ${t.stockCode}
+                                  ${isFetchingPrice && html`<span class="text-blue-400 normal-case text-xs flex items-center"><${ActivityIcon} class="mr-1 animate-pulse" /> ${t.fetchingPrice}</span>`}
+                                </label>
+                                <div class="relative no-swipe">
+                                  <input type="text" value=${stockCode} onChange=${(e) => setStockCode(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 font-bold uppercase" placeholder="AAPL" autoCapitalize="characters" autoComplete="off" spellCheck="false" />
+                                  <${ChartIcon} class="absolute right-2 top-2 text-gray-400 pointer-events-none" />
                                 </div>
-                                <span class=${`text-xs italic font-medium transition-colors ${riskInfo.color}`}>${riskInfo.msg}</span>
+                                ${priceFetchFailed && html`
+                                  <div class="mt-2 text-xs text-red-500 font-medium flex items-center">
+                                    <${AlertIcon} class="mr-1.5" /> ${t.priceLookupError}
+                                  </div>
+                                `}
                               </div>
-                              <div class="text-right">
-                                 <span class=${`font-bold text-xl transition-colors ${riskInfo.color}`}>${formatR(riskR)} R</span>
-                                 <div class="text-xs text-gray-400 dark:text-neutral-500 normal-case">Risk Amount: $${(oneR * riskR).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                              </div>
-                            </div>
 
-                            ${showTargetRiskHelp && html`
-                              <div class="mb-4 p-4 bg-blue-50/50 dark:bg-neutral-800/40 rounded-xl border border-blue-500/20 text-xs leading-relaxed text-gray-600 dark:text-neutral-300 space-y-3 no-swipe animate-fade-in">
-                                <div class="font-bold text-blue-800 dark:text-blue-400 text-sm">${t.targetRiskHelpTitle}</div>
-                                <p>${t.targetRiskHelpDesc}</p>
-                                <div class="border-t border-gray-200 dark:border-neutral-700 pt-3 flex items-center justify-between">
-                                  <label class="font-semibold text-gray-500 dark:text-neutral-400">${t.maxTargetRiskLabel}</label>
-                                  <input type="number" step="0.5" value=${maxTargetRisk} onChange=${(e) => handleSaveMaxTargetRisk(e.target.value)} class="w-16 bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 px-2 py-1 rounded-md text-center text-sm focus:outline-none focus:border-blue-500" />
+                              <!-- Entry Price Card Input -->
+                              <div class="flex flex-col justify-between h-full">
+                                <div class="flex justify-between items-center mb-2 h-7">
+                                  <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.entryPrice}</label>
+                                  <div class="flex bg-gray-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs no-swipe">
+                                    <button type="button" onClick=${() => setTradeType('buy')} class=${`px-2 py-1 rounded-md font-medium transition-colors ${tradeType === 'buy' ? 'bg-green-500 text-white shadow-sm' : 'text-gray-500'}`}>${t.directionBuy}</button>
+                                    <button type="button" onClick=${() => setTradeType('sell')} class=${`px-2 py-1 rounded-md font-medium transition-colors ${tradeType === 'sell' ? 'bg-red-500 text-white shadow-sm' : 'text-gray-500'}`}>${t.directionSell}</button>
+                                  </div>
+                                </div>
+                                <div class="relative no-swipe">
+                                  <span class="absolute left-0 top-2 text-gray-400 font-medium">$</span>
+                                  <input type="number" step="any" inputMode="decimal" value=${entry} onChange=${(e) => setEntry(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 pl-5" placeholder="150.00" />
                                 </div>
                               </div>
-                            `}
-                            
-                            <div class="relative pt-1 no-swipe">
-                              <input type="range" min="0" max=${maxTargetRisk} step="0.1" value=${riskR} onChange=${(e) => setRiskR(parseFloat(e.target.value))} class="w-full accent-blue-500" />
-                              <div class="relative h-5 w-full text-xs text-gray-400 dark:text-neutral-500 mt-1">
-                                ${targetRiskMarks.map(mark => html`
-                                  <span class=${`absolute whitespace-nowrap ${mark.isBold ? 'font-bold text-gray-900 dark:text-white' : ''} ${mark.isMax ? 'text-red-400 font-semibold' : ''}`} style=${{ left: `calc(13px + (100% - 26px) * ${mark.val / maxTargetRisk})`, transform: 'translateX(-50%)' }}>
-                                    ${mark.label}
-                                  </span>
+
+                              <!-- Stop Loss Mode & Card Input -->
+                              <div class="flex flex-col justify-between h-full">
+                                <div class="flex justify-between items-center mb-2 h-7">
+                                  <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.stopLoss}</label>
+                                  <div class="flex bg-gray-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs no-swipe">
+                                    <button type="button" onClick=${() => handleToggleSLMode('price')} class=${getStopLossBtnClass('price')}>${t.stopLossModePrice}</button>
+                                    <button type="button" onClick=${() => handleToggleSLMode('percent')} class=${getStopLossBtnClass('percent')}>${t.stopLossModePercent}</button>
+                                  </div>
+                                </div>
+                                <div class="relative no-swipe">
+                                  <span class="absolute left-0 top-2 text-gray-400 font-medium">${slMode === 'price' ? '$' : '%'}</span>
+                                  <input type="number" step="any" inputMode="decimal" value=${slValue} onChange=${(e) => setSlValue(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 pl-5" placeholder=${slMode === 'price' ? (tradeType === 'buy' ? '140.00' : '160.00') : '5.00'} />
+                                </div>
+                                ${slErrorMsg ? html`
+                                  <div class="mt-2 text-xs text-red-500 font-medium"><${AlertIcon} class="inline mr-1 mb-1" /> ${slErrorMsg}</div>
+                                ` : (slCalc.isValid && html`
+                                  <div class="mt-2 text-xs text-gray-400 dark:text-neutral-500"><span>${slMode === 'price' ? html`Calculated Percentage: <strong>-${slCalc.percent.toFixed(2)}%</strong>` : html`Calculated Price: <strong>$${slCalc.price.toFixed(2)}</strong>`}</span></div>
                                 `)}
                               </div>
+
+                              <!-- Adjustable Target Risk Drag Bar with Interactive Question Mark -->
+                              <div class="col-span-1 md:col-span-2 mt-4">
+                                <div class="flex justify-between items-end mb-2">
+                                  <div class="flex flex-col">
+                                    <div class="flex items-center space-x-2">
+                                      <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.targetRisk}</label>
+                                      <button onClick=${() => setShowTargetRiskHelp(!showTargetRiskHelp)} class="text-gray-400 hover:text-blue-500 transition-colors no-swipe cursor-pointer">
+                                        <${HelpCircleIcon} />
+                                      </button>
+                                    </div>
+                                    <span class=${`text-xs italic font-medium transition-colors ${riskInfo.color}`}>${riskInfo.msg}</span>
+                                  </div>
+                                  <div class="text-right">
+                                     <span class=${`font-bold text-xl transition-colors ${riskInfo.color}`}>${formatR(riskR)} R</span>
+                                     <div class="text-xs text-gray-400 dark:text-neutral-500 normal-case">Risk Amount: $${(oneR * riskR).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                  </div>
+                                </div>
+
+                                ${showTargetRiskHelp && html`
+                                  <div class="mb-4 p-4 bg-blue-50/50 dark:bg-neutral-800/40 rounded-xl border border-blue-500/20 text-xs leading-relaxed text-gray-600 dark:text-neutral-300 space-y-3 no-swipe animate-fade-in">
+                                    <div class="font-bold text-blue-800 dark:text-blue-400 text-sm">${t.targetRiskHelpTitle}</div>
+                                    <p>${t.targetRiskHelpDesc}</p>
+                                    <div class="border-t border-gray-200 dark:border-neutral-700 pt-3 flex items-center justify-between">
+                                      <label class="font-semibold text-gray-500 dark:text-neutral-400">${t.maxTargetRiskLabel}</label>
+                                      <input type="number" step="0.5" value=${maxTargetRisk} onChange=${(e) => handleSaveMaxTargetRisk(e.target.value)} class="w-16 bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 px-2 py-1 rounded-md text-center text-sm focus:outline-none focus:border-blue-500" />
+                                    </div>
+                                  </div>
+                                `}
+                                
+                                <div class="relative pt-1 no-swipe">
+                                  <input type="range" min="0" max=${maxTargetRisk} step="0.1" value=${riskR} onChange=${(e) => setRiskR(parseFloat(e.target.value))} class="w-full accent-blue-500" />
+                                  <div class="relative h-5 w-full text-xs text-gray-400 dark:text-neutral-500 mt-1">
+                                    ${targetRiskMarks.map(mark => html`
+                                      <span class=${`absolute whitespace-nowrap ${mark.isBold ? 'font-bold text-gray-900 dark:text-white' : ''} ${mark.isMax ? 'text-red-400 font-semibold' : ''}`} style=${{ left: `calc(13px + (100% - 26px) * ${mark.val / maxTargetRisk})`, transform: 'translateX(-50%)' }}>
+                                        ${mark.label}
+                                      </span>
+                                    `)}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <!-- Reward:Risk Ratio Slider (Clean marking tags & interactive Help) -->
+                              <div class="col-span-1 md:col-span-2 mt-4">
+                                <div class="flex justify-between items-center mb-2">
+                                  <div class="flex items-center space-x-2">
+                                    <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.rrRatio}</label>
+                                    <button onClick=${() => setShowRRHelp(!showRRHelp)} class="text-gray-400 hover:text-blue-500 transition-colors no-swipe cursor-pointer">
+                                      <${HelpCircleIcon} />
+                                    </button>
+                                  </div>
+                                  <div class="flex bg-gray-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs no-swipe">
+                                    <button type="button" onClick=${() => handleToggleRRMode('ratio')} class=${getRrBtnClass('ratio')}>${t.rrModeRatio}</button>
+                                    <button type="button" onClick=${() => handleToggleRRMode('price')} class=${getRrBtnClass('price')}>${t.rrModePrice}</button>
+                                    <button type="button" onClick=${() => handleToggleRRMode('percent')} class=${getRrBtnClass('percent')}>${t.rrModePercent}</button>
+                                  </div>
+                                </div>
+
+                                ${showRRHelp && html`
+                                  <div class="mb-4 p-4 bg-blue-50/50 dark:bg-neutral-800/40 rounded-xl border border-blue-500/20 text-xs leading-relaxed text-gray-600 dark:text-neutral-300 space-y-1.5 no-swipe animate-fade-in">
+                                    <div class="font-bold text-blue-800 dark:text-blue-300 text-sm">${t.rrHelpTitle}</div>
+                                    <p>${t.rrHelpDesc}</p>
+                                  </div>
+                                `}
+
+                                ${rrMode === 'ratio' ? html`
+                                  <div class="relative pt-1 no-swipe">
+                                    <div class="flex justify-between items-center text-sm text-gray-500 dark:text-neutral-400 mb-1">
+                                      <span>Selected Implied Ratio:</span>
+                                      <span class="font-bold text-green-500">1 : ${formatRR(rrValue)}</span>
+                                    </div>
+                                    <input type="range" min="1.0" max="5.0" step="0.5" value=${rrValue} onChange=${(e) => setRrValue(e.target.value)} class="w-full accent-green-500" />
+                                    <div class="relative h-5 w-full text-xs text-gray-400 dark:text-neutral-500 mt-1">
+                                      <span class="absolute whitespace-nowrap font-bold text-gray-900 dark:text-white" style=${{ left: 'calc(13px + (100% - 26px) * 0.0)', transform: 'translateX(-50%)' }}>1</span>
+                                      <span class="absolute whitespace-nowrap font-bold text-gray-900 dark:text-white" style=${{ left: 'calc(13px + (100% - 26px) * 0.25)', transform: 'translateX(-50%)' }}>2</span>
+                                      <span class="absolute whitespace-nowrap font-bold text-gray-900 dark:text-white" style=${{ left: 'calc(13px + (100% - 26px) * 0.5)', transform: 'translateX(-50%)' }}>3</span>
+                                      <span class="absolute whitespace-nowrap font-bold text-gray-900 dark:text-white" style=${{ left: 'calc(13px + (100% - 26px) * 0.75)', transform: 'translateX(-50%)' }}>4</span>
+                                      <span class="absolute whitespace-nowrap font-bold text-gray-900 dark:text-white" style=${{ left: 'calc(13px + (100% - 26px) * 1.0)', transform: 'translateX(-50%)' }}>5</span>
+                                    </div>
+                                  </div>
+                                ` : html`
+                                  <div class="relative no-swipe">
+                                    <span class="absolute left-0 top-2 text-gray-400 font-medium">${rrMode === 'price' ? '$' : '%'}</span>
+                                    <input type="number" step="any" inputMode="decimal" value=${rrValue} onChange=${(e) => setRrValue(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 pl-5" placeholder=${rrMode === 'price' ? '180.00' : '20.00'} />
+                                  </div>
+                                `}
+
+                                ${rrRatioComputed.isValid && html`
+                                  <div class="mt-2 text-xs text-gray-400 dark:text-neutral-500 flex flex-wrap gap-x-4">
+                                    ${rrMode !== 'ratio' && html`<span>Ratio: <strong>1 : ${formatRR(rrRatioComputed.ratio)}</strong></span>`}
+                                    ${rrMode !== 'price' && html`<span>Price: <strong>$${rrRatioComputed.targetPrice.toFixed(2)}</strong></span>`}
+                                    ${rrMode !== 'percent' && html`<span>Gain: <strong>+${rrRatioComputed.targetPercent.toFixed(2)}%</strong></span>`}
+                                  </div>
+                                `}
+                              </div>
                             </div>
                           </div>
 
-                          <!-- Reward:Risk Ratio Slider (Clean marking tags & interactive Help) -->
-                          <div class="col-span-1 md:col-span-2 mt-4">
-                            <div class="flex justify-between items-center mb-2">
-                              <div class="flex items-center space-x-2">
-                                <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">${t.rrRatio}</label>
-                                <button onClick=${() => setShowRRHelp(!showRRHelp)} class="text-gray-400 hover:text-blue-500 transition-colors no-swipe cursor-pointer">
-                                  <${HelpCircleIcon} />
+                          <!-- TradingView Chart sandbox -->
+                          <div class="bg-white dark:bg-neutral-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-800 mb-6 relative z-0 overflow-hidden">
+                             <div class="flex justify-between items-center mb-4 no-swipe">
+                                <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">TradingView Snapshot</label>
+                                <div class="flex space-x-1 bg-gray-100 dark:bg-neutral-800 p-1 rounded-lg">
+                                  ${Object.entries(t.chartTabs).map(([key, label]) => html`
+                                    <button key=${key} onClick=${() => setInterval(key)} class=${`px-3 py-1 rounded-md text-sm font-medium transition-colors cursor-pointer ${interval === key ? 'bg-white dark:bg-neutral-700 text-blue-500 shadow-sm' : 'text-gray-500 dark:text-neutral-400'}`}>${label}</button>
+                                  `)}
+                                </div>
+                             </div>
+                             <div class="w-full h-72 bg-gray-50 dark:bg-neutral-950 rounded-xl flex items-center justify-center border border-gray-100 dark:border-neutral-800 relative no-swipe">
+                                ${!debouncedStockCode && html`<div class="text-gray-400 flex flex-col items-center text-sm"><${TrendingIcon} class="w-8 h-8 mb-2 opacity-50" /><p>${t.chartPlaceholder}</p></div>`}
+                                <div id="tv_chart_container" ref=${chartContainerRef} class=${`absolute inset-0 w-full h-full rounded-xl overflow-hidden ${debouncedStockCode ? 'opacity-100' : 'opacity-0'}`}></div>
+                             </div>
+                          </div>
+
+                          <!-- Trade Execution Outcomes -->
+                          <div class=${`bg-white dark:bg-neutral-900 rounded-2xl p-6 shadow-sm mb-6 relative z-0 border-2 ${calculations.isValid ? 'border-blue-500 border-opacity-30' : 'border-transparent'}`}>
+                            <div class="flex items-center mb-4">
+                              <${InfoIcon} class="text-blue-500 mr-2" />
+                              <h2 class="text-lg font-bold">${t.tradePlan}</h2>
+                            </div>
+
+                            ${!calculations.isValid ? html`
+                              <div class="space-y-4">
+                                ${(parseFloat(entry) > 0 && rrRatioComputed.isValid) ? html`
+                                  <div class="bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-500/20 space-y-2">
+                                    <div class="flex justify-between items-center text-sm">
+                                      <span class="text-gray-500 dark:text-gray-400 font-medium">Entry Price:</span>
+                                      <span class="font-extrabold">$${parseFloat(entry).toFixed(2)}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-sm">
+                                      <span class="text-gray-500 dark:text-gray-400 font-medium">${t.targetPrice}:</span>
+                                      <span class="font-extrabold text-green-500">$${rrRatioComputed.targetPrice.toFixed(2)}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-sm border-t border-gray-200 dark:border-neutral-700 pt-2">
+                                      <span class="text-gray-500 dark:text-gray-400 font-medium">Gain Percentage Change:</span>
+                                      <span class="font-extrabold text-green-500">+${rrRatioComputed.targetPercent.toFixed(2)}%</span>
+                                    </div>
+                                  </div>
+                                ` : null}
+                                <p class="text-gray-500 dark:text-neutral-400 text-center py-6">${t.invalidInput}</p>
+                              </div>
+                            ` : html`
+                              <div class="space-y-4">
+                                <div class="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 p-4 rounded-xl flex justify-between items-center">
+                                  <span class="font-medium text-base">${t.positionSize}</span>
+                                  <span class="text-2xl font-bold">${calculations.positionSize.toLocaleString()}</span>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                   <div class="bg-gray-50 dark:bg-neutral-800 p-4 rounded-xl flex flex-col justify-between">
+                                      <span class="block text-xs text-gray-500 dark:text-gray-400 mb-1">${t.capitalRequired}</span>
+                                      <span class="font-bold text-lg text-gray-800 dark:text-gray-200">$${calculations.positionValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                   </div>
+                                   <div class="bg-gray-50 dark:bg-neutral-800 p-4 rounded-xl border border-green-500 border-opacity-30 flex flex-col justify-between">
+                                      <span class="block text-xs text-green-600 dark:text-green-400 mb-1">${t.targetPrice}</span>
+                                      <span class="font-bold text-lg text-green-600 dark:text-green-400">$${calculations.targetPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                   </div>
+                                </div>
+
+                                <!-- Progressive Sizing configurations -->
+                                <div class="mt-6 pt-4 border-t border-gray-100 dark:border-neutral-800">
+                                  <div class="flex justify-between items-center mb-3">
+                                    <h3 class="font-semibold text-base">${t.scaleInTitle}</h3>
+                                    <div class="flex bg-gray-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs no-swipe">
+                                      <button onClick=${() => setFirstBetMultiplier(0.3)} class=${getProgressiveBetClass(0.3)}>0.3R</button>
+                                      <button onClick=${() => setFirstBetMultiplier(0.4)} class=${getProgressiveBetClass(0.4)}>0.4R</button>
+                                      <button onClick=${() => setFirstBetMultiplier(0.5)} class=${getProgressiveBetClass(0.5)}>0.5R</button>
+                                    </div>
+                                  </div>
+                                  <div class="grid grid-cols-2 gap-4">
+                                     <div class="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-xl border border-blue-500 border-opacity-20">
+                                        <span class="block text-xs text-blue-500 uppercase tracking-wider mb-1">${t.firstBet} (${formatR(firstBetMultiplier)}R)</span>
+                                        <div class="font-bold text-lg text-blue-700 dark:text-blue-300">${calculations.scaleFirstShares.toLocaleString()} <span class="text-xs font-normal">shares</span></div>
+                                        <div class="text-xs text-gray-500 dark:text-neutral-500 mt-1">Capital: $${calculations.scaleFirstCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                     </div>
+                                     <div class="bg-gray-50 dark:bg-neutral-800 p-3 rounded-xl border border-gray-200 dark:border-neutral-700">
+                                        <span class="block text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">${t.remainingLabel} (${formatR(1 - firstBetMultiplier)}R)</span>
+                                        <div class="font-bold text-lg text-gray-700 dark:text-gray-300">${calculations.scaleRemainingShares.toLocaleString()} <span class="text-xs font-normal">shares</span></div>
+                                        <div class="text-xs text-gray-500 dark:text-neutral-500 mt-1">Capital: $${calculations.scaleRemainingCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                     </div>
+                                  </div>
+                                  <div class="text-xs text-blue-500 bg-blue-50 dark:bg-blue-900/10 p-2.5 rounded-lg mt-3">* ${t.avgUpOnly}</div>
+                                </div>
+
+                                <div class="mt-6 pt-5 border-t border-gray-100 dark:border-neutral-800 no-swipe">
+                                  <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">${t.tradingNotes}</label>
+                                  <textarea value=${rationale} onChange=${(e) => setRationale(e.target.value)} placeholder=${t.notesPlaceholder} rows="3" class="w-full bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-blue-500"></textarea>
+                                </div>
+                                
+                                <button onClick=${handleAddTrade} class="w-full mt-5 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl flex items-center justify-center transition-colors shadow-sm text-base cursor-pointer">
+                                  <${PlusIcon} class="mr-2" /> ${t.addToPortfolio}
                                 </button>
                               </div>
+                            `}
+                          </div>
+                        </div>
+                      ` : html`
+                        <!-- ANNUALIZED RETURN CALCULATOR INTERFACE -->
+                        <div class="animate-fade-in">
+                          <div class=${iOSCardClass}>
+                            <h2 class="text-lg font-bold mb-4 flex items-center text-blue-500">
+                              <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                              <span>${t.annualCalc}</span>
+                            </h2>
+
+                            <!-- Duration Selection Mode (Date Selection vs Direct Days Input) -->
+                            <div class="mb-6">
+                              <label class="block text-sm font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wider mb-2">${t.durationModeLabel}</label>
                               <div class="flex bg-gray-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs no-swipe">
-                                <button type="button" onClick=${() => handleToggleRRMode('ratio')} class=${getRrBtnClass('ratio')}>${t.rrModeRatio}</button>
-                                <button type="button" onClick=${() => handleToggleRRMode('price')} class=${getRrBtnClass('price')}>${t.rrModePrice}</button>
-                                <button type="button" onClick=${() => handleToggleRRMode('percent')} class=${getRrBtnClass('percent')}>${t.rrModePercent}</button>
+                                <button type="button" onClick=${() => setAnnualDurationMode('date')} class=${`flex-1 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${annualDurationMode === 'date' ? 'bg-white dark:bg-neutral-700 text-blue-500 shadow-sm' : 'text-gray-500'}`}>${t.durationModeDate}</button>
+                                <button type="button" onClick=${() => setAnnualDurationMode('days')} class=${`flex-1 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${annualDurationMode === 'days' ? 'bg-white dark:bg-neutral-700 text-blue-500 shadow-sm' : 'text-gray-500'}`}>${t.durationModeDays}</button>
                               </div>
                             </div>
 
-                            ${showRRHelp && html`
-                              <div class="mb-4 p-4 bg-blue-50/50 dark:bg-neutral-800/40 rounded-xl border border-blue-500/20 text-xs leading-relaxed text-gray-600 dark:text-neutral-300 space-y-1.5 no-swipe animate-fade-in">
-                                <div class="font-bold text-blue-800 dark:text-blue-300 text-sm">${t.rrHelpTitle}</div>
-                                <p>${t.rrHelpDesc}</p>
-                              </div>
-                            `}
-
-                            ${rrMode === 'ratio' ? html`
-                              <div class="relative pt-1 no-swipe">
-                                <div class="flex justify-between items-center text-sm text-gray-500 dark:text-neutral-400 mb-1">
-                                  <span>Selected Implied Ratio:</span>
-                                  <span class="font-bold text-green-500">1 : ${formatRR(rrValue)}</span>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                              <!-- Start Date Picker -->
+                              <div>
+                                <label class="block text-sm font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wider mb-2">${t.startDate}</label>
+                                <div class="relative no-swipe">
+                                  <input type="date" value=${annualStartDate} onChange=${(e) => handleAnnualStartDateChange(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 text-base font-bold" />
                                 </div>
-                                <input type="range" min="1.0" max="5.0" step="0.5" value=${rrValue} onChange=${(e) => setRrValue(e.target.value)} class="w-full accent-green-500" />
-                                <div class="relative h-5 w-full text-xs text-gray-400 dark:text-neutral-500 mt-1">
-                                  <span class="absolute whitespace-nowrap font-bold text-gray-900 dark:text-white" style=${{ left: 'calc(13px + (100% - 26px) * 0.0)', transform: 'translateX(-50%)' }}>1</span>
-                                  <span class="absolute whitespace-nowrap font-bold text-gray-900 dark:text-white" style=${{ left: 'calc(13px + (100% - 26px) * 0.25)', transform: 'translateX(-50%)' }}>2</span>
-                                  <span class="absolute whitespace-nowrap font-bold text-gray-900 dark:text-white" style=${{ left: 'calc(13px + (100% - 26px) * 0.5)', transform: 'translateX(-50%)' }}>3</span>
-                                  <span class="absolute whitespace-nowrap font-bold text-gray-900 dark:text-white" style=${{ left: 'calc(13px + (100% - 26px) * 0.75)', transform: 'translateX(-50%)' }}>4</span>
-                                  <span class="absolute whitespace-nowrap font-bold text-gray-900 dark:text-white" style=${{ left: 'calc(13px + (100% - 26px) * 1.0)', transform: 'translateX(-50%)' }}>5</span>
+                              </div>
+
+                              <!-- End Date Picker OR Duration Field based on mode -->
+                              ${annualDurationMode === 'date' ? html`
+                                <div>
+                                  <label class="block text-sm font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wider mb-2">${t.endDate}</label>
+                                  <div class="relative no-swipe">
+                                    <input type="date" value=${annualEndDate} onChange=${(e) => handleAnnualEndDateChange(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 text-base font-bold" />
+                                  </div>
+                                </div>
+                              ` : html`
+                                <div>
+                                  <label class="block text-sm font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wider mb-2">${t.durationDays}</label>
+                                  <div class="relative no-swipe">
+                                    <input type="number" step="1" min="1" value=${annualDuration} onChange=${(e) => handleAnnualDurationChange(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 text-base font-bold pl-1" placeholder="30" />
+                                  </div>
+                                </div>
+                              `}
+                            </div>
+
+                            <!-- Input Mode (Percent vs Amount) -->
+                            <div class="mb-6">
+                              <label class="block text-sm font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wider mb-2">${t.calcMode}</label>
+                              <div class="flex bg-gray-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs no-swipe">
+                                <button type="button" onClick=${() => setAnnualInputMode('percent')} class=${`flex-1 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${annualInputMode === 'percent' ? 'bg-white dark:bg-neutral-700 text-blue-500 shadow-sm' : 'text-gray-500'}`}>${t.stopLossModePercent}</button>
+                                <button type="button" onClick=${() => setAnnualInputMode('amount')} class=${`flex-1 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${annualInputMode === 'amount' ? 'bg-white dark:bg-neutral-700 text-blue-500 shadow-sm' : 'text-gray-500'}`}>Exact Amount</button>
+                              </div>
+                            </div>
+
+                            ${annualInputMode === 'percent' ? html`
+                              <!-- Percent Return Input -->
+                              <div class="mb-6">
+                                <label class="block text-sm font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wider mb-2">${t.returnPercentLabel}</label>
+                                <div class="relative no-swipe">
+                                  <span class="absolute right-2 top-2 text-gray-400 font-bold">%</span>
+                                  <input type="number" step="any" value=${annualReturnPercent} onChange=${(e) => setAnnualReturnPercent(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 font-bold text-xl pr-6" placeholder="10.0" />
                                 </div>
                               </div>
                             ` : html`
-                              <div class="relative no-swipe">
-                                <span class="absolute left-0 top-2 text-gray-400 font-medium">${rrMode === 'price' ? '$' : '%'}</span>
-                                <input type="number" step="any" inputMode="decimal" value=${rrValue} onChange=${(e) => setRrValue(e.target.value)} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 pl-5" placeholder=${rrMode === 'price' ? '180.00' : '20.00'} />
+                              <!-- Amount Fields (Principal & Profit) -->
+                              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div>
+                                  <label class="block text-sm font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wider mb-2">${t.initialPrincipal}</label>
+                                  <div class="relative no-swipe">
+                                    <span class="absolute left-0 top-2 text-gray-400 font-medium">$</span>
+                                    <input type="text" inputMode="decimal" value=${annualInitialPrincipal} onChange=${(e) => setAnnualInitialPrincipal(formatCommas(parseCommas(e.target.value)))} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 font-bold text-base pl-5" placeholder="10,000" />
+                                  </div>
+                                </div>
+                                <div>
+                                  <label class="block text-sm font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wider mb-2">${t.profitAmount}</label>
+                                  <div class="relative no-swipe">
+                                    <span class="absolute left-0 top-2 text-gray-400 font-medium">$</span>
+                                    <input type="text" inputMode="decimal" value=${annualProfitAmount} onChange=${(e) => setAnnualProfitAmount(formatCommas(parseCommas(e.target.value)))} class="w-full bg-transparent border-b-2 border-gray-200 dark:border-neutral-800 py-2 focus:outline-none focus:border-blue-500 font-bold text-base pl-5" placeholder="1,000" />
+                                  </div>
+                                </div>
                               </div>
                             `}
 
-                            ${rrRatioComputed.isValid && html`
-                              <div class="mt-2 text-xs text-gray-400 dark:text-neutral-500 flex flex-wrap gap-x-4">
-                                ${rrMode !== 'ratio' && html`<span>Ratio: <strong>1 : ${formatRR(rrRatioComputed.ratio)}</strong></span>`}
-                                ${rrMode !== 'price' && html`<span>Price: <strong>$${rrRatioComputed.targetPrice.toFixed(2)}</strong></span>`}
-                                ${rrMode !== 'percent' && html`<span>Gain: <strong>+${rrRatioComputed.targetPercent.toFixed(2)}%</strong></span>`}
+                            <!-- Yearly Days base standard selection -->
+                            <div>
+                              <label class="block text-sm font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wider mb-2">${t.yearlyBaseLabel}</label>
+                              <div class="flex bg-gray-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs no-swipe">
+                                <button type="button" onClick=${() => setAnnualYearlyBase(365)} class=${`flex-1 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${annualYearlyBase === 365 ? 'bg-white dark:bg-neutral-700 text-blue-500 shadow-sm' : 'text-gray-500'}`}>${t.naturalDays}</button>
+                                <button type="button" onClick=${() => setAnnualYearlyBase(252)} class=${`flex-1 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${annualYearlyBase === 252 ? 'bg-white dark:bg-neutral-700 text-blue-500 shadow-sm' : 'text-gray-500'}`}>${t.tradingDays}</button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- Result Breakdown Sheet -->
+                          <div class="bg-white dark:bg-neutral-900 rounded-2xl p-6 shadow-sm mb-6 relative z-0 border border-gray-100 dark:border-neutral-800">
+                            <div class="flex items-center mb-4 border-b border-gray-100 dark:border-neutral-800 pb-3">
+                              <${InfoIcon} class="text-blue-500 mr-2" />
+                              <h2 class="text-lg font-bold">${t.annualOutcomeTitle}</h2>
+                            </div>
+
+                            ${!annualCalculations.isValid ? html`
+                              <div class="p-6 text-center text-red-500 font-semibold flex items-center justify-center">
+                                <${AlertIcon} class="mr-2" />
+                                <span>${annualCalculations.errorMsg}</span>
+                              </div>
+                            ` : html`
+                              <div class="space-y-6">
+                                <!-- Large Compounded (CAGR) Box -->
+                                <div class="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 p-5 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                                  <div>
+                                    <span class="block text-sm font-semibold uppercase tracking-wide opacity-80">${t.compoundedAR}</span>
+                                    <span class="text-3xl font-extrabold text-blue-600 dark:text-blue-400">
+                                      ${annualCalculations.compoundedRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+                                    </span>
+                                  </div>
+                                  <div class="text-xs max-w-sm leading-relaxed opacity-70">
+                                    Calculates growth rate assuming complete reinvestment of principal and profit over consecutive cycles.
+                                  </div>
+                                </div>
+
+                                <!-- Simple rate and time factor blocks -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div class="bg-gray-50 dark:bg-neutral-800/50 p-4 rounded-xl border border-gray-100 dark:border-neutral-800">
+                                    <span class="block text-xs font-semibold uppercase text-gray-500 dark:text-neutral-400 tracking-wider mb-1">${t.simpleAR}</span>
+                                    <span class="text-xl font-bold text-gray-800 dark:text-gray-100">
+                                      ${annualCalculations.simpleRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+                                    </span>
+                                  </div>
+                                  <div class="bg-gray-50 dark:bg-neutral-800/50 p-4 rounded-xl border border-gray-100 dark:border-neutral-800">
+                                    <span class="block text-xs font-semibold uppercase text-gray-500 dark:text-neutral-400 tracking-wider mb-1">${t.timeFactor}</span>
+                                    <span class="text-xl font-bold text-gray-800 dark:text-gray-100">
+                                      ${annualCalculations.timeFactor.toFixed(2)}x
+                                    </span>
+                                    <span class="text-xs text-gray-400 ml-1">cycles/yr</span>
+                                  </div>
+                                </div>
+
+                                <!-- Summary stats list -->
+                                <div class="pt-4 border-t border-gray-100 dark:border-neutral-800 space-y-3 text-sm">
+                                  <div class="flex justify-between">
+                                    <span class="text-gray-500">${t.totalDuration}:</span>
+                                    <span class="font-bold text-gray-800 dark:text-gray-200">${annualCalculations.duration} Days</span>
+                                  </div>
+                                  <div class="flex justify-between">
+                                    <span class="text-gray-500">Short-Term Return Rate:</span>
+                                    <span class="font-bold text-green-500">+${annualCalculations.shortTermPercent.toFixed(2)}%</span>
+                                  </div>
+                                </div>
+
+                                <!-- Extreme value warnings -->
+                                ${annualCalculations.isExtreme && html`
+                                  <div class="p-3 bg-yellow-50 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-400 rounded-xl border border-yellow-500/20 text-xs flex items-start gap-2">
+                                    <${AlertIcon} class="w-4 h-4 mt-0.5 shrink-0" />
+                                    <span>${t.extremeValueWarning}</span>
+                                  </div>
+                                `}
                               </div>
                             `}
                           </div>
                         </div>
-                      </div>
-
-                      <!-- TradingView Chart sandbox -->
-                      <div class="bg-white dark:bg-neutral-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-800 mb-6 relative z-0 overflow-hidden">
-                         <div class="flex justify-between items-center mb-4 no-swipe">
-                            <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">TradingView Snapshot</label>
-                            <div class="flex space-x-1 bg-gray-100 dark:bg-neutral-800 p-1 rounded-lg">
-                              ${Object.entries(t.chartTabs).map(([key, label]) => html`
-                                <button key=${key} onClick=${() => setInterval(key)} class=${`px-3 py-1 rounded-md text-sm font-medium transition-colors cursor-pointer ${interval === key ? 'bg-white dark:bg-neutral-700 text-blue-500 shadow-sm' : 'text-gray-500 dark:text-neutral-400'}`}>${label}</button>
-                              `)}
-                            </div>
-                         </div>
-                         <div class="w-full h-72 bg-gray-50 dark:bg-neutral-950 rounded-xl flex items-center justify-center border border-gray-100 dark:border-neutral-800 relative no-swipe">
-                            ${!debouncedStockCode && html`<div class="text-gray-400 flex flex-col items-center text-sm"><${TrendingIcon} class="w-8 h-8 mb-2 opacity-50" /><p>${t.chartPlaceholder}</p></div>`}
-                            <div id="tv_chart_container" ref=${chartContainerRef} class=${`absolute inset-0 w-full h-full rounded-xl overflow-hidden ${debouncedStockCode ? 'opacity-100' : 'opacity-0'}`}/>
-                         </div>
-                      </div>
-
-                      <!-- Trade Execution Outcomes -->
-                      <div class=${`bg-white dark:bg-neutral-900 rounded-2xl p-6 shadow-sm mb-6 relative z-0 border-2 ${calculations.isValid ? 'border-blue-500 border-opacity-30' : 'border-transparent'}`}>
-                        <div class="flex items-center mb-4">
-                          <${InfoIcon} class="text-blue-500 mr-2" />
-                          <h2 class="text-lg font-bold">${t.tradePlan}</h2>
-                        </div>
-
-                        ${!calculations.isValid ? html`
-                          <div class="space-y-4">
-                            <!-- Show percentage difference even when stop loss is not configured yet -->
-                            ${(parseFloat(entry) > 0 && rrRatioComputed.isValid) ? html`
-                              <div class="bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-500/20 space-y-2">
-                                <div class="flex justify-between items-center text-sm">
-                                  <span class="text-gray-500 dark:text-gray-400 font-medium">Entry Price:</span>
-                                  <span class="font-extrabold">$${parseFloat(entry).toFixed(2)}</span>
-                                </div>
-                                <div class="flex justify-between items-center text-sm">
-                                  <span class="text-gray-500 dark:text-gray-400 font-medium">${t.targetPrice}:</span>
-                                  <span class="font-extrabold text-green-500">$${rrRatioComputed.targetPrice.toFixed(2)}</span>
-                                </div>
-                                <div class="flex justify-between items-center text-sm border-t border-gray-200 dark:border-neutral-700 pt-2">
-                                  <span class="text-gray-500 dark:text-gray-400 font-medium">Gain Percentage Change:</span>
-                                  <span class="font-extrabold text-green-500">+${rrRatioComputed.targetPercent.toFixed(2)}%</span>
-                                </div>
-                              </div>
-                            ` : null}
-                            <p class="text-gray-500 dark:text-neutral-400 text-center py-6">${t.invalidInput}</p>
-                          </div>
-                        ` : html`
-                          <div class="space-y-4">
-                            <div class="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 p-4 rounded-xl flex justify-between items-center">
-                              <span class="font-medium text-base">${t.positionSize}</span>
-                              <span class="text-2xl font-bold">${calculations.positionSize.toLocaleString()}</span>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                               <div class="bg-gray-50 dark:bg-neutral-800 p-4 rounded-xl flex flex-col justify-between">
-                                  <span class="block text-xs text-gray-500 dark:text-gray-400 mb-1">${t.capitalRequired}</span>
-                                  <span class="font-bold text-lg text-gray-800 dark:text-gray-200">$${calculations.positionValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                               </div>
-                               <div class="bg-gray-50 dark:bg-neutral-800 p-4 rounded-xl border border-green-500 border-opacity-30 flex flex-col justify-between">
-                                  <span class="block text-xs text-green-600 dark:text-green-400 mb-1">${t.targetPrice}</span>
-                                  <span class="font-bold text-lg text-green-600 dark:text-green-400">$${calculations.targetPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                               </div>
-                            </div>
-
-                            <!-- Progressive Sizing configurations -->
-                            <div class="mt-6 pt-4 border-t border-gray-100 dark:border-neutral-800">
-                              <div class="flex justify-between items-center mb-3">
-                                <h3 class="font-semibold text-base">${t.scaleInTitle}</h3>
-                                <div class="flex bg-gray-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs no-swipe">
-                                  <button onClick=${() => setFirstBetMultiplier(0.3)} class=${getProgressiveBetClass(0.3)}>0.3R</button>
-                                  <button onClick=${() => setFirstBetMultiplier(0.4)} class=${getProgressiveBetClass(0.4)}>0.4R</button>
-                                  <button onClick=${() => setFirstBetMultiplier(0.5)} class=${getProgressiveBetClass(0.5)}>0.5R</button>
-                                </div>
-                              </div>
-                              <div class="grid grid-cols-2 gap-4">
-                                 <div class="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-xl border border-blue-500 border-opacity-20">
-                                    <span class="block text-xs text-blue-500 uppercase tracking-wider mb-1">${t.firstBet} (${formatR(firstBetMultiplier)}R)</span>
-                                    <div class="font-bold text-lg text-blue-700 dark:text-blue-300">${calculations.scaleFirstShares.toLocaleString()} <span class="text-xs font-normal">shares</span></div>
-                                    <div class="text-xs text-gray-500 dark:text-neutral-500 mt-1">Capital: $${calculations.scaleFirstCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                                 </div>
-                                 <div class="bg-gray-50 dark:bg-neutral-800 p-3 rounded-xl border border-gray-200 dark:border-neutral-700">
-                                    <span class="block text-xs text-gray-500 dark:text-neutral-400 uppercase tracking-wider mb-1">${t.remainingLabel} (${formatR(1 - firstBetMultiplier)}R)</span>
-                                    <div class="font-bold text-lg text-gray-700 dark:text-gray-300">${calculations.scaleRemainingShares.toLocaleString()} <span class="text-xs font-normal">shares</span></div>
-                                    <div class="text-xs text-gray-500 dark:text-neutral-500 mt-1">Capital: $${calculations.scaleRemainingCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                                 </div>
-                              </div>
-                              <div class="text-xs text-blue-500 bg-blue-50 dark:bg-blue-900/10 p-2.5 rounded-lg mt-3">* ${t.avgUpOnly}</div>
-                            </div>
-
-                            <div class="mt-6 pt-5 border-t border-gray-100 dark:border-neutral-800 no-swipe">
-                              <label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">${t.tradingNotes}</label>
-                              <textarea value=${rationale} onChange=${(e) => setRationale(e.target.value)} placeholder=${t.notesPlaceholder} rows="3" class="w-full bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-blue-500" />
-                            </div>
-                            
-                            <button onClick=${handleAddTrade} class="w-full mt-5 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl flex items-center justify-center transition-colors shadow-sm text-base cursor-pointer">
-                              <${PlusIcon} class="mr-2" /> ${t.addToPortfolio}
-                            </button>
-                          </div>
-                        `}
-                      </div>
+                      `}
                     </div>
 
                     <!-- Scroll-linked Footer Placement -->
@@ -1599,7 +1948,7 @@ function doPost(e) {
                             <span class=${`font-bold text-3xl ${portfolioStats.netProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>${portfolioStats.netProfit >= 0 ? '+' : ''}$${portfolioStats.netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                           <div>
-                            <span class=${`text-xs px-3 py-1.5 rounded-full font-bold ${portfolioStats.netProfit >= 0 ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'}`}>
+                            <span class=${`text-xs px-3 py-1.5 rounded-full font-bold ${portfolioStats.netProfit >= 0 ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-green-300'}`}>
                               ${portfolio > 0 ? `${portfolioStats.netProfit >= 0 ? '+' : ''}${portfolioStats.netProfitPercent.toFixed(2)}%` : '0.00%'}
                             </span>
                           </div>
@@ -1653,7 +2002,7 @@ function doPost(e) {
 
                          <div class="mb-6">
                             <div class="flex justify-between text-sm mb-1">
-                              <span class="font-medium text-gray-600 dark:text-gray-400">Live Risk</span>
+                              <span class="font-medium text-gray-650 dark:text-gray-400">Live Risk</span>
                               <span class=${`font-bold ${portfolioStats.totalRiskR > maxLiveRisk ? 'text-red-500' : 'text-blue-500'}`}>${portfolioStats.totalRiskR.toFixed(2)} R / ${maxLiveRisk} R</span>
                             </div>
                             <div class="w-full bg-gray-200 dark:bg-neutral-800 rounded-full h-4 overflow-hidden">
@@ -1678,7 +2027,7 @@ function doPost(e) {
                          </div>
                       </div>
 
-                      <!-- Active watchlist container -->
+                      <!-- Active watchlist container with dynamic manual update button -->
                       <div class="bg-white dark:bg-neutral-900 rounded-2xl p-0 shadow-sm border border-gray-100 dark:border-neutral-800 mb-6 relative z-0 overflow-hidden">
                          <div class="p-4 border-b border-gray-100 dark:border-neutral-800 flex justify-between items-center">
                            <h3 class="font-bold text-gray-800 dark:text-gray-200 text-[1em]">${t.activeTrades}</h3>
@@ -1712,7 +2061,7 @@ function doPost(e) {
                                        <span class="font-extrabold text-gray-800 dark:text-gray-200">${trade.symbol}</span>
                                        <span class="text-xs px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-md">${trade.shares.toLocaleString()} shares | ${formatR(trade.riskR)}R</span>
                                        ${hasLivePrice && html`
-                                         <span class=${`text-xs px-2 py-1 rounded-md font-bold ${tradeProfit >= 0 ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'}`}>
+                                         <span class=${`text-xs px-2 py-1 rounded-md font-bold ${tradeProfit >= 0 ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-green-300'}`}>
                                            P&L: ${tradeProfit >= 0 ? '+' : ''}$${tradeProfit.toFixed(2)} (${tradeProfit >= 0 ? '+' : ''}${profitPercent.toFixed(2)}%)
                                          </span>
                                        `}
@@ -1739,7 +2088,7 @@ function doPost(e) {
                                          `}
                                        </div>
                                        ${isEditingNote ? html`
-                                         <textarea value=${editTradeNotes} onChange=${(e) => setEditTradeNotes(e.target.value)} rows="2" class="w-full bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 px-3 py-2 rounded-lg focus:outline-none" />
+                                         <textarea value=${editTradeNotes} onChange=${(e) => setEditTradeNotes(e.target.value)} rows="2" class="w-full bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 px-3 py-2 rounded-lg focus:outline-none"></textarea>
                                        ` : html`
                                          <p class="text-gray-650 dark:text-neutral-400 italic whitespace-pre-wrap">${trade.rationale || 'No strategy notes recorded.'}</p>
                                        `}
@@ -1823,21 +2172,23 @@ function doPost(e) {
                       </div>
                     </div>
 
-                    <${ScrollingCopyrightFooter} />
+                    <div class="py-8 text-center text-[0.75em] text-gray-400 dark:text-gray-600 border-t border-gray-100 dark:border-neutral-900 mt-8 mb-4">
+                      <span>© 2026 Trading Risk Calculator. All Rights Reserved.</span>
+                    </div>
                   </div>
                 </div>
 
              </div>
           </main>
 
-          <!-- iOS STYLE SIDE SHEET: SETTINGS MODAL -->
+          <!-- iOS STYLE SIDE SHEET: SETTINGS MODAL (Opened from the Left) -->
           ${showSettingsModal && html`
             <div 
-              class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-start animate-fade-in"
+              class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-start animate-fade-in animate-slide-right"
               onClick=${() => setShowSettingsModal(false)}
             >
               <div 
-                class="bg-white dark:bg-[#1C1C1E] w-full max-w-lg h-full shadow-2xl flex flex-col animate-slide-right no-swipe"
+                class="bg-white dark:bg-[#1C1C1E] w-full max-w-lg h-full shadow-2xl flex flex-col no-swipe"
                 onClick=${(e) => e.stopPropagation()}
               >
                 <!-- Fixed Header at the Top -->
@@ -1918,7 +2269,7 @@ function doPost(e) {
                     </div>
                   </div>
 
-                  <!-- Unified Disclosures Section (Reordered sequence: About -> How -> Google Sheets Migration -> Sponsor -> Contact) -->
+                  <!-- Unified Disclosures Section (Reordered sequence: About -> How to Use -> Google Sheets Migration -> Sponsor -> Contact) -->
                   <div class="border-t border-gray-200 dark:border-neutral-800 pt-4 space-y-3">
                     <h4 class="font-bold text-xs uppercase tracking-wider text-gray-400 dark:text-neutral-500">Guides & Services</h4>
                     
@@ -1953,7 +2304,7 @@ function doPost(e) {
                       `}
                     </div>
 
-                    <!-- [3] GOOGLE SHEETS WEB APP SYNC MIGRATION (Clean flat accordion style matching "how to use") -->
+                    <!-- [3] GOOGLE SHEETS WEB APP SYNC MIGRATION -->
                     <div class="border-b border-gray-100 dark:border-neutral-800 pb-2">
                       <button onClick=${() => toggleDisclosure('gdrive')} class="w-full flex justify-between items-center font-bold text-[0.85em] text-gray-600 dark:text-gray-400 uppercase tracking-wider py-1 focus:outline-none cursor-pointer">
                         <span class="flex items-center space-x-1.5">
@@ -1973,7 +2324,7 @@ function doPost(e) {
                                 ${copySuccess ? 'Copied!' : 'Copy'}
                               </button>
                             </div>
-                            <textarea readOnly value=${GAS_TEMPLATE} class="w-full h-32 bg-gray-900 text-green-400 font-mono text-[0.65rem] p-2 rounded-lg focus:outline-none" />
+                            <textarea readOnly value=${GAS_TEMPLATE} class="w-full h-32 bg-gray-900 text-green-400 font-mono text-[0.65rem] p-2 rounded-lg focus:outline-none"></textarea>
                           </div>
 
                           <div class="p-3 bg-gray-50 dark:bg-neutral-800 rounded-xl border border-gray-100 dark:border-neutral-800 space-y-2">
